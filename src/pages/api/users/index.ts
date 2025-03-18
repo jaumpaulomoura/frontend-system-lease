@@ -1,0 +1,26 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { UserProps } from '@interfaces/User'
+import api from '@services/gateway'
+import { NextApiRequest, NextApiResponse } from 'next'
+import { parseCookies } from 'nookies'
+
+export default async (req: NextApiRequest, response: NextApiResponse) => {
+  const parsedCookies = parseCookies({ req })
+  const token = parsedCookies.auth_token
+
+  if (!token) {
+    throw new Error('Requisição não autorizada')
+  }
+
+  try {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`
+
+    const res = await api.get<UserProps[]>('/users')
+
+    const data = res.data
+
+    response.status(200).json(data)
+  } catch (error: any) {
+    return new Response(error)
+  }
+}
