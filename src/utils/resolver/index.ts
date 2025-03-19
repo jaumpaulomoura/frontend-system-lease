@@ -124,7 +124,7 @@ export const MaterialResolver = yup.object().shape({
 //   image: yup.string().notRequired(), // Permitir que o campo seja uma string ou undefined
 //   skus: yup.array().of(
 //     yup.object().shape({
-//       name: yup.string().required('O nome do SKU é obrigatório'),
+//       name: yup.string().required('O nome do  é obrigatório'),
 //       materials: yup.array().of(
 //         yup.object().shape({
 //           materialId: yup.number().required('O ID do material é obrigatório'),
@@ -137,12 +137,31 @@ export const MaterialResolver = yup.object().shape({
 //   )
 // })
 
-export const PedEntResolver = yup.object().shape({
-  pessoaId: yup.number().required("Preenchimento obrigatório"),
-});
 export const UserResolver = yup.object().shape({
   name: yup.string().required("Preenchimento obrigatório"),
   user: yup.string().required("Preenchimento obrigatório"),
   email: yup.string().required("Preenchimento obrigatório"),
   document: yup.string().required("Preenchimento obrigatório"),
+});
+
+export const ProductResolver = yup.object({
+  name: yup.string().required("Nome é obrigatório"),
+  marca: yup.string().required("Nome é obrigatório"),
+  description: yup.string(),
+  weekly_value: yup
+    .number()
+    .nullable()
+    .positive("Valor deve ser positivo")
+    .transform((value) => (isNaN(value) ? null : value)),
+  monthly_value: yup
+    .number()
+    .nullable()
+    .positive("Valor deve ser positivo")
+    .transform((value) => (isNaN(value) ? null : value)),
+  annual_value: yup
+    .number()
+    .nullable()
+    .positive("Valor deve ser positivo")
+    .transform((value) => (isNaN(value) ? null : value)),
+  active: yup.boolean().required("O campo ativo é obrigatório"),
 });
