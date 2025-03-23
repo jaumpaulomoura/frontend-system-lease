@@ -26,12 +26,16 @@ import { ProductResolver } from "@utils/resolver";
 import Layout from "@components/Layout";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import RegisterPatrimonyModal from "./RegisterPatrimonyModal";
+import { getStocksSearch } from "@services/getStockSearch";
+import { StockProps } from "@interfaces/Stock";
 
 export type FormData = {
   id?: number;
   name: string;
   marca: string; // Mudança de "name" para "marca"
   description?: string;
+  daily_value?: number | null;
   weekly_value?: number | null;
   monthly_value?: number | null;
   annual_value?: number | null;
@@ -46,6 +50,12 @@ export default function ProductPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [filterName, setFilterName] = useState("");
+  const [openPatrimonyModal, setOpenPatrimonyModal] = useState(false);
+  const [stockData, setStockData] = useState<StockProps[] | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductProps | null>(
+    null
+  );
+
   const form = useForm<FormData>({
     resolver: yupResolver(ProductResolver),
     mode: "onChange",
@@ -73,6 +83,7 @@ export default function ProductPage() {
         name: editProduct.name,
         marca: editProduct.marca,
         description: editProduct.description || "",
+        daily_value: editProduct.daily_value ?? null,
         weekly_value: editProduct.weekly_value ?? null,
         monthly_value: editProduct.monthly_value ?? null,
         annual_value: editProduct.annual_value ?? null,
@@ -83,6 +94,7 @@ export default function ProductPage() {
         name: "",
         marca: "",
         description: "",
+        daily_value: null,
         weekly_value: null,
         monthly_value: null,
         annual_value: null,
@@ -92,12 +104,17 @@ export default function ProductPage() {
   }, [editProduct, form]);
 
   const handleDelete = async () => {
-    if (deleteId) {
-      setLoading(true);
+    if (!deleteId) return;
+
+    setLoading(true);
+    try {
       await deleteProduct(deleteId.toString());
       setProducts((prev) => prev.filter((product) => product.id !== deleteId));
       setDeleteId(null);
       setOpenDialog(false);
+    } catch (error) {
+      console.error("Erro ao deletar o produto:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -110,6 +127,7 @@ export default function ProductPage() {
         name: data.name,
         marca: data.marca,
         description: data.description || "",
+        daily_value: data.daily_value ?? null,
         weekly_value: data.weekly_value ?? null,
         monthly_value: data.monthly_value ?? null,
         annual_value: data.annual_value ?? null,
@@ -151,6 +169,7 @@ export default function ProductPage() {
           "Name",
           "Marca", // Nome alterado para Marca
           "Descrição",
+          "Valor Diarios",
           "Valor Semanal",
           "Valor Mensal",
           "Valor Anual",
@@ -163,6 +182,7 @@ export default function ProductPage() {
           name,
           marca,
           description,
+          daily_value,
           weekly_value,
           monthly_value,
           annual_value,
@@ -172,6 +192,7 @@ export default function ProductPage() {
           name,
           marca,
           description || "", // Substituindo undefined por string vazia
+          daily_value != null ? `R$ ${daily_value.toFixed(2)}` : "N/A",
           weekly_value != null ? `R$ ${weekly_value.toFixed(2)}` : "N/A", // Verifica se é null
           monthly_value != null ? `R$ ${monthly_value.toFixed(2)}` : "N/A", // Verifica se é null
           annual_value != null ? `R$ ${annual_value.toFixed(2)}` : "N/A", // Verific
@@ -184,27 +205,83 @@ export default function ProductPage() {
   };
 
   const columns: GridColDef[] = [
-    { field: "id", headerName: "ID", width: 90 },
-    { field: "name", headerName: "Nome", width: 200, flex: 1 },
-    { field: "marca", headerName: "Marca", width: 200, flex: 1 }, // Nome alterado para Marca
-    { field: "description", headerName: "Descrição", width: 300, flex: 1 },
+    {
+      field: "actions",
+      headerName: "Ações",
+      width: 80,
+      renderCell: (params) => (
+        <Box
+          margin={0}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          height="100%"
+          width="100%"
+          gap={0.1}
+        >
+          <Button
+            onClick={() => {
+              setEditProduct(params.row);
+              setOpenForm(true);
+            }}
+            sx={{ width: "40px", minWidth: "40px" }}
+          >
+            <MdEdit color="blue" />
+          </Button>
+          <Button
+            onClick={() => {
+              setDeleteId(params.row.id);
+              setOpenDialog(true);
+            }}
+            sx={{ width: "40px", minWidth: "40px" }}
+          >
+            <MdDelete color="red" />
+          </Button>
+        </Box>
+      ),
+    },
+    {
+      field: "addPatrimony",
+      headerName: "Patrimônio",
+      width: 100,
+      renderCell: (params) => (
+        <Button
+          onClick={() => handleAddPatrimony(params)} // Passa a lógica para a função handleAddPatrimony
+          sx={{ width: "40px", minWidth: "40px" }}
+        >
+          <IoAddCircleOutline color="green" />
+        </Button>
+      ),
+    },
+    { field: "id", headerName: "Codigo Produto", width: 120 },
+    { field: "name", headerName: "Nome", width: 130 },
+    { field: "marca", headerName: "Marca", width: 130 }, // Nome alterado para Marca
+    { field: "description", headerName: "Descrição", width: 130 },
+
+    {
+      field: "daily_value",
+      headerName: "Valor Diario",
+      width: 100,
+      type: "number",
+      // valueFormatter: (params) => (params ? `R$ ${params.toFixed(2)}` : "N/A"),
+    },
     {
       field: "weekly_value",
       headerName: "Valor Semanal",
-      width: 150,
+      width: 120,
       type: "number",
       // valueFormatter: (params) => (params ? `R$ ${params.toFixed(2)}` : "N/A"),
     },
     {
       field: "monthly_value",
       headerName: "Valor Mensal",
-      width: 150,
+      width: 100,
       type: "number",
     },
     {
       field: "annual_value",
       headerName: "Valor Anual",
-      width: 150,
+      width: 90,
       type: "number",
       // valueFormatter: (params) => (params ? `R$ ${params.toFixed(2)}` : "N/A"),
     },
@@ -217,47 +294,37 @@ export default function ProductPage() {
     {
       field: "createdAt",
       headerName: "Criado em",
-      width: 180,
+      width: 100,
       valueFormatter: (params) =>
         params ? new Date(params).toLocaleDateString("pt-BR") : "",
     },
     {
       field: "updatedAt",
       headerName: "Atualizado em",
-      width: 180,
+      width: 100,
       valueFormatter: (params) =>
         params ? new Date(params).toLocaleDateString("pt-BR") : "",
-    },
-    {
-      field: "actions",
-      headerName: "Ações",
-      width: 150,
-      renderCell: (params) => (
-        <Box display="flex" gap={1}>
-          <Button
-            onClick={() => {
-              setEditProduct(params.row);
-              setOpenForm(true);
-            }}
-          >
-            <MdEdit color="blue" />
-          </Button>
-          <Button
-            onClick={() => {
-              setDeleteId(params.row.id);
-              setOpenDialog(true);
-            }}
-          >
-            <MdDelete color="red" />
-          </Button>
-        </Box>
-      ),
     },
   ];
 
   const filteredProducts = products.filter(
     (product) => product.marca.toLowerCase().includes(filterName.toLowerCase()) // Marca no filtro
   );
+
+  const handleAddPatrimony = async (params) => {
+    const id_produto = params.row.id; // Pega o id do produto
+    setSelectedProduct(params.row);
+    setOpenPatrimonyModal(true); // Abre o modal
+
+    try {
+      // Chama a função do service passando o id_produto
+      const stockData = await getStocksSearch(id_produto);
+      console.log(stockData); // Exibe os dados no console
+      setStockData(stockData); // Atualiza o estado com os dados do estoque
+    } catch (error) {
+      console.error("Erro ao buscar dados de estoque:", error);
+    }
+  };
 
   return (
     <Box
@@ -339,7 +406,6 @@ export default function ProductPage() {
           </Box>
         </Container>
       </Layout>
-
       {/* Diálogo de Exclusão */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
@@ -355,7 +421,6 @@ export default function ProductPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Formulário de Adicionar/Editar Produto */}
       <Dialog open={openForm} onClose={() => setOpenForm(false)}>
         <DialogTitle>
@@ -384,6 +449,15 @@ export default function ProductPage() {
               fullWidth
               margin="normal"
               {...form.register("description")}
+            />
+            <TextField
+              label="Valor Diario"
+              fullWidth
+              margin="normal"
+              {...form.register("daily_value")}
+              type="number"
+              error={!!form.formState.errors.daily_value}
+              helperText={form.formState.errors.daily_value?.message}
             />
             <TextField
               label="Valor Semanal"
@@ -434,6 +508,14 @@ export default function ProductPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      {console.log("Produto selecionado:", selectedProduct)}
+      {console.log("Dados de estoque:", stockData)}
+      <RegisterPatrimonyModal
+        open={openPatrimonyModal}
+        onClose={() => setOpenPatrimonyModal(false)}
+        product={selectedProduct} // Passando o produto para o modal
+        stockData={stockData} // Passando os dados de estoque para o modal
+      />
     </Box>
   );
 }

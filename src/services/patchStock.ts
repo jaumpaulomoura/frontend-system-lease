@@ -1,30 +1,27 @@
-import { MovPedProps } from '@interfaces/MovPed'
-import axios, { AxiosResponse } from 'axios'
+import { StockProps } from "@interfaces/Stock";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
 interface Props {
-  dateSai: string
-  sectionId: number
-  pedVenId: number
+  dateSai: string;
+  sectionId: number;
+  pedVenId: number;
 }
 
-export async function patchMovPed(
-  data: Props,
-  id: number
-): Promise<MovPedProps> {
+export async function patchStock(data: Props, id: number): Promise<StockProps> {
   try {
-    const response: AxiosResponse<MovPedProps> = await api.post(
-      `/api/movPeds/patch/`,
+    const response: AxiosResponse<StockProps> = await api.post(
+      `/api/stocks/patch/`,
       { ...data, id }
-    )
+    );
 
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error ocurred ${error}`);
   }
 }

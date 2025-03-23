@@ -1,26 +1,26 @@
-import { MovPedProps } from '@interfaces/MovPed'
-import axios, { AxiosResponse } from 'axios'
+import { StockProps } from "@interfaces/Stock";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
-export async function getMovPedsSearch(
-  pedVenId: string
-): Promise<MovPedProps[]> {
+export async function getStocksSearch(
+  idProduct: string
+): Promise<StockProps[]> {
   try {
-    const response: AxiosResponse<MovPedProps[]> = await api.get(
-      '/api/movPeds/',
+    console.log(idProduct);
+    const response: AxiosResponse<StockProps[]> = await api.get(
+      "/api/stocks/search",
       {
-        params: { pedVenId }
+        params: { idProduct },
       }
-    )
+    );
 
-    // console.log('Received data:', response.data)
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error ocurred ${error}`);
   }
 }

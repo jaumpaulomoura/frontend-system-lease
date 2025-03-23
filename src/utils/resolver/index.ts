@@ -148,6 +148,11 @@ export const ProductResolver = yup.object({
   name: yup.string().required("Nome é obrigatório"),
   marca: yup.string().required("Nome é obrigatório"),
   description: yup.string(),
+  daily_value: yup
+    .number()
+    .nullable()
+    .positive("Valor deve ser positivo")
+    .transform((value) => (isNaN(value) ? null : value)),
   weekly_value: yup
     .number()
     .nullable()

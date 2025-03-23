@@ -3,6 +3,7 @@ export interface ProductProps {
   name: string;
   marca: string;
   description?: string;
+  daily_value?: number | null;
   weekly_value?: number | null;
   monthly_value?: number | null;
   annual_value?: number | null;

@@ -7,6 +7,7 @@ interface Props {
   name: string;
   marca: string;
   description?: string;
+  daily_value?: number | null;
   weekly_value?: number | null;
   monthly_value?: number | null;
   annual_value?: number | null;
@@ -22,6 +23,7 @@ export async function patchProduct(
     // Formatar os valores monetários, caso sejam definidos
     const formattedData = {
       ...data,
+      daily_value: data.daily_value != null ? data.daily_value : null,
       weekly_value: data.weekly_value != null ? data.weekly_value : null,
       monthly_value: data.monthly_value != null ? data.monthly_value : null,
       annual_value: data.annual_value != null ? data.annual_value : null,

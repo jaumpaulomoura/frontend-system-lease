@@ -1,22 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { StockProps } from "@interfaces/Stock";
 import api from "@services/gateway";
 import { NextApiRequest, NextApiResponse } from "next";
 import { parseCookies } from "nookies";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default async (req: NextApiRequest, response: NextApiResponse) => {
-  const {
-    name,
-    marca,
-    description,
-    daily_value,
-    weekly_value,
-    monthly_value,
-    annual_value,
-    active,
-    id,
-  } = req.body;
-
   const parsedCookies = parseCookies({ req });
   const token = parsedCookies.auth_token;
 
@@ -27,20 +16,11 @@ export default async (req: NextApiRequest, response: NextApiResponse) => {
   try {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
-    const res: any = await api
-      .patch<any>(`/products/${id}`, {
-        marca,
-        name,
-        description,
-        daily_value,
-        weekly_value,
-        monthly_value,
-        annual_value,
-        active,
-      })
-      .then((resp) => resp.data);
+    const res = await api.get<StockProps[]>("/stocks");
 
-    response.status(200).json({ ...res });
+    const data = res.data;
+
+    response.status(200).json(data);
   } catch (error: any) {
     return new Response(error);
   }

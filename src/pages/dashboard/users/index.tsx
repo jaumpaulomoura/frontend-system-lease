@@ -184,13 +184,13 @@ export default function UserPage() {
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            width: "100%", // Garante que o container ocupe toda a largura
-            height: "calc(100vh - 64px)", // Subtrai a altura do menu, assumindo que o menu tem 64px de altura
-            maxWidth: "1200px", // Máxima largura para não exagerar
-            justifyContent: "flex-start", // Inicia o conteúdo no topo
-            padding: 0, // Remove o padding do container
-            margin: 0, // Remove a margem do container
-            paddingTop: "64px", // Adiciona padding para não sobrepor o menu (64px, mesma altura do menu)
+            width: "100%",
+            height: "calc(100vh - 64px)",
+            maxWidth: "1200px",
+            justifyContent: "flex-start",
+            padding: 0,
+            margin: 0,
+            paddingTop: "64px",
             backgroundColor: "#E0E0E0",
           }}
         >
