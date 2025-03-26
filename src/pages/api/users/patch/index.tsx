@@ -3,6 +3,7 @@ import api from "@services/gateway";
 import { NextApiRequest, NextApiResponse } from "next";
 import { parseCookies } from "nookies";
 
+// eslint-disable-next-line import/no-anonymous-default-export
 export default async (req: NextApiRequest, response: NextApiResponse) => {
   const { name, user, email, document, password, id } = req.body;
 

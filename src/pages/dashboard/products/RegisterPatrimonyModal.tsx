@@ -12,7 +12,7 @@ import {
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+// import * as yup from "yup";
 import { ProductProps } from "@interfaces/Product";
 import { StockProps } from "@interfaces/Stock";
 import { createStock } from "@services/createStock";

@@ -4,7 +4,7 @@ import axios, { AxiosResponse } from "axios";
 import api from "./api-routes";
 
 export async function getStocksSearch(
-  idProduct: string
+  idProduct: number
 ): Promise<StockProps[]> {
   try {
     console.log(idProduct);

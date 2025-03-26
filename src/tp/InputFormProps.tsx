@@ -13,6 +13,7 @@ const InputForm: React.FC<Props> = ({
   name,
   label,
   error,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   format,
   ...props
 }) => {

@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { InitialContext } from "@contexts/InitialContext";
 import { ProductProps } from "@interfaces/Product";
@@ -244,9 +244,9 @@ export default function ProductPage() {
       field: "addPatrimony",
       headerName: "Patrimônio",
       width: 100,
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams<ProductProps>) => (
         <Button
-          onClick={() => handleAddPatrimony(params)} // Passa a lógica para a função handleAddPatrimony
+          onClick={() => handleAddPatrimony(params)}
           sx={{ width: "40px", minWidth: "40px" }}
         >
           <IoAddCircleOutline color="green" />
@@ -310,8 +310,9 @@ export default function ProductPage() {
   const filteredProducts = products.filter(
     (product) => product.marca.toLowerCase().includes(filterName.toLowerCase()) // Marca no filtro
   );
-
-  const handleAddPatrimony = async (params) => {
+  const handleAddPatrimony = async (
+    params: GridRenderCellParams<ProductProps>
+  ) => {
     const id_produto = params.row.id; // Pega o id do produto
     setSelectedProduct(params.row);
     setOpenPatrimonyModal(true); // Abre o modal
@@ -508,8 +509,6 @@ export default function ProductPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      {console.log("Produto selecionado:", selectedProduct)}
-      {console.log("Dados de estoque:", stockData)}
       <RegisterPatrimonyModal
         open={openPatrimonyModal}
         onClose={() => setOpenPatrimonyModal(false)}

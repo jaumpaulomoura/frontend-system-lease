@@ -6,15 +6,20 @@ import {
   AiOutlineWarning,
 } from "react-icons/ai";
 import { Snackbar, Alert, IconButton, Box, Typography } from "@mui/material";
-import { ToastProps } from "@tp/ToastProps";
 
-export function Toast({
-  title,
-  description,
-  status,
-  footerComponent,
-}: ToastProps) {
-  const statuses: any = {
+// Definindo o tipo ToastStatus corretamente
+type ToastStatus = "success" | "error" | "warning" | "info";
+
+interface ToastProps {
+  title: string;
+  description: string;
+  status: ToastStatus;
+  footerComponent?: React.ReactNode;
+}
+
+// Definindo os diferentes status e ícones
+const statuses: Record<ToastStatus, { color: string; icon: React.ReactNode }> =
+  {
     success: {
       color: "success.main",
       icon: <AiOutlineCheckCircle fontSize="35px" />,
@@ -33,14 +38,20 @@ export function Toast({
     },
   };
 
+export function Toast({
+  title,
+  description,
+  status,
+  footerComponent,
+}: ToastProps) {
   return (
     <Snackbar
-      open={true} // Aqui, você pode controlar se o Toast está visível ou não
-      autoHideDuration={6000} // Tempo para o toast desaparecer automaticamente
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }} // Posição do Toast
+      open={true}
+      autoHideDuration={6000}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
     >
       <Alert
-        severity={status}
+        severity={status} // O valor de "status" é agora tipado corretamente para "success", "error", "warning", "info"
         sx={{
           display: "flex",
           justifyContent: "space-between",
@@ -55,7 +66,7 @@ export function Toast({
             aria-label="close"
             color="inherit"
             size="small"
-            onClick={() => {} /* Função para fechar o Toast */}
+            onClick={() => {}}
           >
             <AiOutlineCloseCircle fontSize="16px" />
           </IconButton>

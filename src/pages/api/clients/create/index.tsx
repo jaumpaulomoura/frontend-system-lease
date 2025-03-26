@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { parseCookies } from "nookies";
 import api from "@services/gateway";
+import { AxiosError } from "axios";
 
 interface ClientRequestBody {
   name: string;
@@ -23,9 +24,16 @@ interface ClientRequestBody {
   cep_cobranca: string;
 }
 
+interface ApiErrorResponse {
+  error: string;
+  message?: string;
+  status?: number;
+  missingFields?: string[]; // Add missingFields to the interface
+}
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<ClientRequestBody | ApiErrorResponse>
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
@@ -33,25 +41,33 @@ export default async function handler(
 
   const body: Partial<ClientRequestBody> = req.body;
 
-  if (
-    !body.name ||
-    !body.cpf_cnpj ||
-    !body.telefone ||
-    !body.email ||
-    !body.rua ||
-    !body.numero ||
-    !body.bairro ||
-    !body.cidade ||
-    !body.estado ||
-    !body.cep ||
-    !body.rua_cobranca ||
-    !body.numero_cobranca ||
-    !body.bairro_cobranca ||
-    !body.cidade_cobranca ||
-    !body.estado_cobranca ||
-    !body.cep_cobranca
-  ) {
-    return res.status(400).json({ error: "Campos obrigatórios faltando" });
+  // Validate required fields
+  const requiredFields: (keyof ClientRequestBody)[] = [
+    "name",
+    "cpf_cnpj",
+    "telefone",
+    "email",
+    "rua",
+    "numero",
+    "bairro",
+    "cidade",
+    "estado",
+    "cep",
+    "rua_cobranca",
+    "numero_cobranca",
+    "bairro_cobranca",
+    "cidade_cobranca",
+    "estado_cobranca",
+    "cep_cobranca",
+  ];
+
+  const missingFields = requiredFields.filter((field) => !body[field]);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: "Campos obrigatórios faltando",
+      missingFields: missingFields as string[], // Explicitly type as string[]
+    });
   }
 
   const { auth_token: token } = parseCookies({ req });
@@ -61,23 +77,24 @@ export default async function handler(
   }
 
   try {
-    const response = await api.post("/clients", body, {
+    const response = await api.post<ClientRequestBody>("/clients", body, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     return res.status(200).json(response.data);
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Erro ao criar cliente:", error);
 
-    let status = 500;
-    let message = "Erro interno do servidor";
-
-    if (typeof error === "object" && error !== null && "response" in error) {
-      const axiosError = error as { response?: { status: number; data: any } };
-      status = axiosError.response?.status || 500;
-      message = axiosError.response?.data || message;
+    if (error instanceof AxiosError) {
+      return res.status(error.response?.status || 500).json({
+        error: error.response?.data?.message || "Erro na requisição",
+        status: error.response?.status,
+      });
     }
 
-    return res.status(status).json({ error: message });
+    return res.status(500).json({
+      error: "Erro interno do servidor",
+      message: error instanceof Error ? error.message : "Erro desconhecido",
+    });
   }
 }
