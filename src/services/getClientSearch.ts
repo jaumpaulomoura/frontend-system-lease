@@ -1,23 +1,23 @@
-import { EstoqueProps } from '@interfaces/Estoque'
-import axios, { AxiosResponse } from 'axios'
+import { ClientProps } from "@interfaces/Client";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
-export async function getEstoquesSearch(name: string): Promise<EstoqueProps[]> {
+export async function getClientsSearch(name: string): Promise<ClientProps[]> {
   try {
-    const response: AxiosResponse<EstoqueProps[]> = await api.get(
-      '/api/estoques',
+    const response: AxiosResponse<ClientProps[]> = await api.get(
+      "/api/clients",
       {
-        params: { name }
+        params: { name },
       }
-    )
+    );
 
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error ocurred ${error}`);
   }
 }

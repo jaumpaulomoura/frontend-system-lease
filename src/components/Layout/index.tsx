@@ -102,7 +102,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
 
           <ListItem>
-            <ListItemButton component={Link} href="/dashboard/pessoas">
+            <ListItemButton component={Link} href="/dashboard/clients">
               <Typography
                 variant="body1"
                 sx={{ color: theme.palette.primary.contrastText }}

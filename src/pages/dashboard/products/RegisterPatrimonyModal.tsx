@@ -16,6 +16,7 @@ import * as yup from "yup";
 import { ProductProps } from "@interfaces/Product";
 import { StockProps } from "@interfaces/Stock";
 import { createStock } from "@services/createStock";
+import { patrimonySchema } from "@utils/resolver";
 
 interface RegisterPatrimonyModalProps {
   open: boolean;
@@ -28,21 +29,8 @@ interface FormData {
   nfNumber: string;
   value: number;
   quantity: number;
-  numero_patrimonio: string;
+  numero_patrimonio?: string;
 }
-
-// Esquema de validação com Yup
-const patrimonySchema = yup.object().shape({
-  nfNumber: yup.string().required("Número da NF é obrigatório"),
-  value: yup
-    .number()
-    .required("Valor é obrigatório")
-    .min(0, "O valor não pode ser negativo"),
-  quantity: yup
-    .number()
-    .required("Quantidade é obrigatória")
-    .min(1, "A quantidade deve ser pelo menos 1"),
-});
 
 export default function RegisterPatrimonyModal({
   open,
@@ -83,31 +71,43 @@ export default function RegisterPatrimonyModal({
     setLoading(true);
 
     try {
-      const stockData: StockProps = {
-        id_produto: product.id,
-        numero_patrimonio: "abc", // O número do patrimônio pode ser alterado dinamicamente
-        nota_fiscal: data.nfNumber,
-        valor_pago: data.value,
-        status: "Disponível",
-        observacoes: `Adicionado ${data.quantity} unidades`,
-        id_patrimonio: 0,
-      };
+      // Criar um array de objetos, cada um com um número de patrimônio único
+      const stockItems: StockProps[] = Array.from(
+        { length: data.quantity },
+        (_, index) => ({
+          id_produto: product.id,
+          numero_patrimonio: `PAT-${index + 1}-${Math.floor(
+            Math.random() * 1000
+          )}`,
+          nota_fiscal: data.nfNumber,
+          valor_pago: data.value,
+          status: "Disponível",
+          observacoes: `Adicionado automaticamente`,
+          id: 0, // O backend deve definir o ID real
+        })
+      );
 
-      // Chamada à API para criar o item no estoque
-      const newStock = await createStock(stockData);
+      console.log("Dados a serem enviados para API:", stockItems);
 
-      // Atualiza o estado local com o novo item
-      setStock((prevStock) => [...prevStock, newStock]);
+      // Enviar para a API
+      const newStockItems = await Promise.all(
+        stockItems.map((item) => createStock(item))
+      );
 
-      setSnackbarMessage("Item adicionado ao estoque com sucesso!");
+      // Atualizar o estado local com os novos itens
+      setStock((prevStock) => [...prevStock, ...newStockItems]);
+
+      setSnackbarMessage(
+        `${data.quantity} itens adicionados ao estoque com sucesso!`
+      );
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
 
-      reset(); // Reseta o formulário
-      setAddModalOpen(false); // Fecha o modal de adição
+      reset(); // Limpar o formulário
+      setTimeout(() => setAddModalOpen(false), 500); // Fechar modal com atraso para feedback
     } catch (error) {
       console.error("Erro ao adicionar ao estoque:", error);
-      setSnackbarMessage("Erro ao adicionar item ao estoque.");
+      setSnackbarMessage("Erro ao adicionar itens ao estoque.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
     } finally {

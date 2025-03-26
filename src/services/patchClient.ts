@@ -1,24 +1,24 @@
-import { SectionProps } from '@interfaces/Section'
-import axios, { AxiosResponse } from 'axios'
+import { ClientProps } from "@interfaces/Client";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
-export async function patchEstoque(
-  quantity: number,
-  id: number
-): Promise<SectionProps> {
+export async function patchClient(
+  clientData: ClientProps, // Passa os dados completos do cliente
+  id: number // Passa o ID do cliente
+): Promise<ClientProps> {
   try {
-    const response: AxiosResponse<SectionProps> = await api.post(
-      `/api/estoques/patch/`,
-      { quantity, id }
-    )
+    const response: AxiosResponse<ClientProps> = await api.put(
+      `/api/clients/patch/${id}`, // Usando PUT para atualizar o recurso com base no ID
+      clientData // Envia os dados do cliente
+    );
 
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error occurred: ${error}`);
   }
 }

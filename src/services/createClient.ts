@@ -1,26 +1,42 @@
-import { MaterialProps } from '@interfaces/Material'
-import axios, { AxiosResponse } from 'axios'
+import { ClientProps } from "@interfaces/Client";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
 interface Props {
-  name: string
-  unitMed: string
+  name: string;
+  cpf_cnpj: string;
+  telefone: string;
+  email: string;
+  rua: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  rua_cobranca: string;
+  numero_cobranca: string;
+  complemento_cobranca: string;
+  bairro_cobranca: string;
+  cidade_cobranca: string;
+  estado_cobranca: string;
+  cep_cobranca: string;
 }
 
-export async function createMaterial(data: Props): Promise<MaterialProps> {
+export async function createClient(data: Props): Promise<ClientProps> {
   try {
-    const response: AxiosResponse<MaterialProps> = await api.post(
-      `/api/materials/create/`,
+    const response: AxiosResponse<ClientProps> = await api.post(
+      `/api/clients/create/`,
       { ...data }
-    )
+    );
 
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error ocurred ${error}`);
   }
 }

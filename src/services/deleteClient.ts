@@ -1,20 +1,20 @@
-import { MaterialProps } from '@interfaces/Material'
-import axios, { AxiosResponse } from 'axios'
+import { ClientProps } from "@interfaces/Client";
+import axios, { AxiosResponse } from "axios";
 
-import api from './api-routes'
+import api from "./api-routes";
 
-export async function deleteMaterial(id: string): Promise<MaterialProps> {
+export async function deleteClient(id: string): Promise<ClientProps> {
   try {
-    const response: AxiosResponse<MaterialProps> = await api.get(
-      `/api/materials/delete/${id}`
-    )
+    const response: AxiosResponse<ClientProps> = await api.get(
+      `/api/clients/delete/${id}`
+    );
 
-    return response.data
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message)
+      throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`)
+    throw new Error(`Unexpected error ocurred ${error}`);
   }
 }
