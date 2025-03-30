@@ -7,13 +7,23 @@ import { parseCookies } from "nookies";
 export default async (req: NextApiRequest, response: NextApiResponse) => {
   const {
     name,
-    marca,
-    description,
-    daily_value,
-    weekly_value,
-    monthly_value,
-    annual_value,
-    active,
+    cpf_cnpj,
+    telefone,
+    email,
+    rua,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    rua_cobranca,
+    numero_cobranca,
+    complemento_cobranca,
+    bairro_cobranca,
+    cidade_cobranca,
+    estado_cobranca,
+    cep_cobranca,
     id,
   } = req.body;
 
@@ -29,14 +39,24 @@ export default async (req: NextApiRequest, response: NextApiResponse) => {
 
     const res: any = await api
       .patch<any>(`/clients/${id}`, {
-        marca,
         name,
-        description,
-        daily_value,
-        weekly_value,
-        monthly_value,
-        annual_value,
-        active,
+        cpf_cnpj,
+        telefone,
+        email,
+        rua,
+        numero,
+        complemento,
+        bairro,
+        cidade,
+        estado,
+        cep,
+        rua_cobranca,
+        numero_cobranca,
+        complemento_cobranca,
+        bairro_cobranca,
+        cidade_cobranca,
+        estado_cobranca,
+        cep_cobranca,
       })
       .then((resp) => resp.data);
 

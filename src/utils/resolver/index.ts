@@ -10,10 +10,6 @@ export const SectionResolver = yup.object().shape({
     .positive("Deve ser um número positivo")
     .min(1, "Deve ser maior que zero"),
 });
-export const MaterialResolver = yup.object().shape({
-  name: yup.string().required("Preenchimento obrigatório"),
-  unitMed: yup.string().required("Preenchimento obrigatório"),
-});
 
 export const UserResolver = yup.object().shape({
   name: yup.string().required("Preenchimento obrigatório"),

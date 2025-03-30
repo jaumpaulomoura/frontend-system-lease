@@ -20,13 +20,17 @@ import { getMeData } from "@services/getMeData";
 import Link from "next/link";
 import { InitialContext } from "@contexts/InitialContext";
 import { useThemeToggle } from "@theme/ThemeToggleContext";
-import { useTheme } from "@mui/material/styles"; // Para acessar o tema atual
+import { useTheme } from "@mui/material/styles";
 import { Brightness4, Brightness7 } from "@mui/icons-material";
+import { usePathname } from "next/navigation"; // CORREÇÃO: Agora usa usePathname
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { toggleTheme } = useThemeToggle();
   const { signOut, userAuth } = useContext(InitialContext);
   const [user, setUser] = useState<UserProps | null>(null);
-  const theme = useTheme(); // Acesso ao tema atual
+  const theme = useTheme();
+  const pathname = usePathname();
+  console.log("Rota atual:", pathname);
 
   const getData = async () => {
     try {
@@ -56,8 +60,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           "& .MuiDrawer-paper": {
             width: 220,
             boxSizing: "border-box",
-            backgroundColor: theme.palette.primary.main, // Cor de fundo do tema
-            color: theme.palette.primary.contrastText, // Cor de texto do tema
+            backgroundColor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
           },
         }}
         variant="permanent"
@@ -72,65 +76,100 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             sx={{
               maxWidth: 250,
               marginBottom: 2,
-              display: "block", // Evita espaços extras em inline elements
-              margin: "0 auto", // Centraliza horizontalmente se necessário
+              display: "block",
+              margin: "0 auto",
             }}
           />
 
           <ListItem>
-            <ListItemButton component={Link} href="/dashboard">
-              <Typography
-                variant="body1"
-                sx={{ color: theme.palette.primary.contrastText }}
-              >
-                Dashboard
-              </Typography>
+            <ListItemButton
+              component={Link}
+              href="/dashboard"
+              sx={{
+                backgroundColor:
+                  pathname === "/dashboard" ? "#fce853" : "transparent",
+                color:
+                  pathname === "/dashboard"
+                    ? "#000000"
+                    : theme.palette.primary.contrastText,
+                "&:hover": { backgroundColor: theme.palette.secondary.light },
+              }}
+            >
+              <Typography variant="body1">Dashboard</Typography>
             </ListItemButton>
           </ListItem>
 
           {userAuth?.role === 2 && (
             <ListItem>
-              <ListItemButton component={Link} href="/dashboard/users">
-                <Typography
-                  variant="body1"
-                  sx={{ color: theme.palette.primary.contrastText }}
-                >
-                  Usuários
-                </Typography>
+              <ListItemButton
+                component={Link}
+                href="/dashboard/users"
+                sx={{
+                  backgroundColor: pathname.startsWith("/dashboard/users")
+                    ? "#fce853"
+                    : "transparent",
+                  color: pathname.startsWith("/dashboard/users")
+                    ? "#000000"
+                    : "#transparent", // Branco e preto para teste
+                  "&:hover": { backgroundColor: theme.palette.secondary.light },
+                }}
+              >
+                <Typography variant="body1">Usuários</Typography>
               </ListItemButton>
             </ListItem>
           )}
 
           <ListItem>
-            <ListItemButton component={Link} href="/dashboard/clients">
-              <Typography
-                variant="body1"
-                sx={{ color: theme.palette.primary.contrastText }}
-              >
-                Clientes
-              </Typography>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/clients"
+              sx={{
+                backgroundColor: pathname.startsWith("/dashboard/clients")
+                  ? "#fce853"
+                  : "transparent",
+                color: pathname.startsWith("/dashboard/clients")
+                  ? "#000000"
+                  : "#transparent", // Branco e preto para teste
+                "&:hover": { backgroundColor: theme.palette.secondary.light },
+              }}
+            >
+              <Typography variant="body1">Clientes</Typography>
             </ListItemButton>
           </ListItem>
 
           <ListItem>
-            <ListItemButton component={Link} href="/dashboard/products">
-              <Typography
-                variant="body1"
-                sx={{ color: theme.palette.primary.contrastText }}
-              >
-                Produtos
-              </Typography>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/products"
+              sx={{
+                backgroundColor: pathname.startsWith("/dashboard/products")
+                  ? "#fce853"
+                  : "transparent",
+                color: pathname.startsWith("/dashboard/products")
+                  ? "#000000"
+                  : "#transparent", // Branco e preto para teste
+                "&:hover": { backgroundColor: theme.palette.secondary.light },
+              }}
+            >
+              <Typography variant="body1">Produtos</Typography>
             </ListItemButton>
           </ListItem>
 
           <ListItem>
-            <ListItemButton component={Link} href="/dashboard/pedEnts">
-              <Typography
-                variant="body1"
-                sx={{ color: theme.palette.primary.contrastText }}
-              >
-                Locação
-              </Typography>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/lease"
+              sx={{
+                backgroundColor: pathname.startsWith("/dashboard/lease")
+                  ? "#fce853"
+                  : "transparent",
+                color: pathname.startsWith("/dashboard/lease")
+                  ? "#000000"
+                  : "#transparent", // Branco e preto para teste
+                "&:hover": { backgroundColor: theme.palette.secondary.light },
+              }}
+            >
+              <Typography variant="body1">Locação</Typography>
             </ListItemButton>
           </ListItem>
         </List>
@@ -160,7 +199,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppBar
           sx={{
             width: "100%",
-            backgroundColor: theme.palette.primary.main, // Cor de fundo do tema
+            backgroundColor: theme.palette.primary.main,
             color: theme.palette.primary.contrastText,
             padding: 0,
             margin: 0,
@@ -198,18 +237,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Button
                   onClick={toggleTheme}
                   sx={{
-                    minWidth: "40px", // Garante um tamanho mínimo para o botão
-                    height: "40px", // Mantém um tamanho adequado
+                    minWidth: "40px",
+                    height: "40px",
                     marginRight: 0,
                     color: theme.palette.primary.contrastText,
                     backgroundColor: theme.palette.primary.main,
-                    display: "flex", // Centraliza o ícone
+                    display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderRadius: "50%", // Deixa o botão arredondado
-                    "&:hover": {
-                      backgroundColor: theme.palette.primary.dark,
-                    },
+                    borderRadius: "50%",
+                    "&:hover": { backgroundColor: theme.palette.primary.dark },
                   }}
                 >
                   {theme.palette.mode === "dark" ? (
@@ -229,7 +266,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             display: "flex",
             flexDirection: "column",
             height: "95vh",
-            backgroundColor: "##E0E0E0", // Cor de fundo que você deseja
+            backgroundColor: "#E0E0E0",
           }}
         >
           {children}

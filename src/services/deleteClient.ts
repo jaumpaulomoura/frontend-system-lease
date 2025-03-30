@@ -5,7 +5,7 @@ import api from "./api-routes";
 
 export async function deleteClient(id: string): Promise<ClientProps> {
   try {
-    const response: AxiosResponse<ClientProps> = await api.get(
+    const response: AxiosResponse<ClientProps> = await api.delete(
       `/api/clients/delete/${id}`
     );
 
