@@ -28,6 +28,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import RegisterPatrimonyModal from "./RegisterPatrimonyModal";
 import { getStocksSearch } from "@services/getStockSearch";
+
 import { StockProps } from "@interfaces/Stock";
 
 export type FormData = {
@@ -41,6 +42,10 @@ export type FormData = {
   annual_value?: number | null;
   active: boolean;
 };
+type TableCell =
+  | string
+  | { content: string; colSpan?: number; styles?: Record<string, string> };
+type TableRow = TableCell[];
 
 export default function ProductPage() {
   const { setLoading } = useContext(InitialContext);
@@ -156,54 +161,112 @@ export default function ProductPage() {
       setLoading(false);
     }
   };
-
   const generatePDF = () => {
     const doc = new jsPDF();
-    doc.text("Relatório de Produtos", 14, 20);
 
-    autoTable(doc, {
-      startY: 30,
-      head: [
-        [
-          "ID",
-          "Name",
-          "Marca", // Nome alterado para Marca
-          "Descrição",
-          "Valor Diarios",
-          "Valor Semanal",
-          "Valor Mensal",
-          "Valor Anual",
-          "Ativo",
-        ],
-      ],
-      body: products.map(
-        ({
-          id,
-          name,
-          marca,
-          description,
-          daily_value,
-          weekly_value,
-          monthly_value,
-          annual_value,
-          active,
-        }) => [
-          id,
-          name,
-          marca,
-          description || "", // Substituindo undefined por string vazia
-          daily_value != null ? `R$ ${daily_value.toFixed(2)}` : "N/A",
-          weekly_value != null ? `R$ ${weekly_value.toFixed(2)}` : "N/A", // Verifica se é null
-          monthly_value != null ? `R$ ${monthly_value.toFixed(2)}` : "N/A", // Verifica se é null
-          annual_value != null ? `R$ ${annual_value.toFixed(2)}` : "N/A", // Verific
-          active ? "Sim" : "Não",
-        ]
-      ),
+    // Configurações iniciais
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text("Relatório de Produtos com Estoque", 105, 20, { align: "center" });
+
+    // Data de emissão
+    doc.setFontSize(10);
+    doc.text(`Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, 14, 30);
+
+    // Preparar os dados para a tabela
+    const tableData: TableRow[] = [];
+
+    products.forEach((product) => {
+      // Linha do produto (mesclada)
+      tableData.push([
+        {
+          content: `${product.id} - ${product.name}`,
+          colSpan: 8,
+          styles: {
+            fillColor: `rgb(220, 220, 220)`,
+
+            fontStyle: "bold",
+          },
+        },
+      ]);
+
+      // Cabeçalhos dos itens de estoque
+      tableData.push([
+        { content: "Patrimônio", styles: { fontStyle: "bold" } },
+        { content: "Status", styles: { fontStyle: "bold" } },
+        { content: "Valor Diário", styles: { fontStyle: "bold" } },
+        { content: "Valor Semanal", styles: { fontStyle: "bold" } },
+        { content: "Valor Mensal", styles: { fontStyle: "bold" } },
+        { content: "Data Criação", styles: { fontStyle: "bold" } },
+        { content: "Ativo", styles: { fontStyle: "bold" } },
+        { content: "", styles: { fontStyle: "bold" } },
+      ]);
+
+      // Itens de estoque (ou mensagem se não houver)
+      if (product.stocks && product.stocks.length > 0) {
+        product.stocks.forEach((stock) => {
+          tableData.push([
+            stock.numero_patrimonio || "N/A",
+            stock.status || "N/A",
+            formatCurrency(product.daily_value ?? 0),
+            formatCurrency(product.weekly_value ?? 0),
+            formatCurrency(product.monthly_value ?? 0),
+            stock.createdAt
+              ? new Date(stock.createdAt).toLocaleDateString("pt-BR")
+              : "N/A",
+            product.active ? "Sim" : "Não",
+            "", // Célula vazia para completar
+          ]);
+        });
+      } else {
+        tableData.push([
+          {
+            content: "Nenhum item em estoque",
+            colSpan: 8,
+            styles: { fontStyle: "italic" },
+          },
+        ]);
+      }
+
+      // Espaçamento entre produtos
+      tableData.push(["", "", "", "", "", "", "", ""]);
     });
 
-    doc.save("Produtos.pdf");
-  };
+    // Gerar a tabela
+    autoTable(doc, {
+      startY: 40,
+      head: [["ID/Nome", "", "", "", "", "", "", ""]], // Cabeçalho vazio
+      body: tableData,
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 15 },
+        7: { cellWidth: 15 },
+      },
+      didDrawPage: (data) => {
+        // Rodapé com número de páginas
+        doc.setFontSize(10);
+        const pageCount = doc.getNumberOfPages();
+        doc.text(
+          `Página ${data.pageNumber} de ${pageCount}`,
+          data.settings.margin.left,
+          doc.internal.pageSize.height - 10
+        );
+      },
+    });
 
+    doc.save(`produtos_estoque_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
   const columns: GridColDef[] = [
     {
       field: "actions",

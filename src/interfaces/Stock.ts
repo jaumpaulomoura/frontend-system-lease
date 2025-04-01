@@ -1,3 +1,5 @@
+import { ProductProps } from "./Product";
+
 export interface StockProps {
   id: number;
   id_produto: number;
@@ -8,4 +10,5 @@ export interface StockProps {
   observacoes?: string;
   createdAt?: string;
   updatedAt?: string;
+  produto: ProductProps;
 }

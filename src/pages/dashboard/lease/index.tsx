@@ -1,7 +1,11 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+"use client";
+
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import { TbTruckReturn } from "react-icons/tb";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
-import { MdDelete, MdEdit } from "react-icons/md";
+import CancelIcon from "@mui/icons-material/Cancel";
+import { MdDelete } from "react-icons/md";
 import {
   Box,
   Button,
@@ -15,6 +19,22 @@ import {
   Typography,
   Autocomplete,
   IconButton,
+  Tooltip,
+  ListItem,
+  List,
+  ListItemText,
+  TableCell,
+  TableRow,
+  Table,
+  TableContainer,
+  TableBody,
+  TableHead,
+  Chip,
+  Grid,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  AlertColor,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { InitialContext } from "@contexts/InitialContext";
@@ -29,22 +49,43 @@ import { StockProps } from "@interfaces/Stock";
 import { ProductProps } from "@interfaces/Product";
 import { getProductList } from "@services/getProductList";
 import { getStocksList } from "@services/getStocksList";
-
+import { patchStock } from "@services/patchStock";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { FaFilePdf } from "react-icons/fa";
+import LeaseContractPDF from "@components/LeaseContractPDF";
+import { ErrorOutline } from "@mui/icons-material";
+import { PiFilePdf } from "react-icons/pi";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { LeaseItemProps } from "@interfaces/LeaseItens";
+// import clients from "@pages/api/clients";
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: autoTable.AutoTableOptions) => jsPDF;
+  }
+}
+interface JsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: autoTable.AutoTableOptions) => JsPDFWithAutoTable;
+  lastAutoTable: {
+    finalY: number;
+    // Outras propriedades que você possa precisar
+  };
+}
 interface ClientProps {
   id: number;
   name: string;
 }
 
-interface LeaseItemProps {
-  id_produto: number;
-  stocks: {
-    id_stock: number;
-    numero_patrimonio: string;
-  }[];
-  quantidade: number;
-  periodo: "diario" | "semanal" | "mensal";
-  valor_unitario: number;
-}
+// interface LeaseItemProps {
+//   id_produto: number;
+//   stocks: {
+//     id_stock: number;
+//     numero_patrimonio: string;
+//   }[];
+//   quantidade: number;
+//   periodo: "diario" | "semanal" | "mensal";
+//   valor_unitario: number;
+// }
 interface LeaseRequestPayload {
   id_locacao: number;
   cliente_id: number;
@@ -90,7 +131,7 @@ export type FormData = {
   status: string;
   observacoes?: string | null;
 };
-
+type LeaseItem = LeaseRequestPayload["leaseItems"][0];
 interface ProductWithStock extends ProductProps {
   availableStock: StockProps[];
   totalAvailable: number;
@@ -116,6 +157,17 @@ export default function LeasePage() {
   const [selectedStocks, setSelectedStocks] = useState<StockProps[]>([]);
   const [leaseItems, setLeaseItems] = useState<LeaseItemProps[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [devolucaoModalOpen, setDevolucaoModalOpen] = useState(false);
+  const [leaseParaDevolver, setLeaseParaDevolver] = useState<LeaseProps | null>(
+    null
+  );
+  const [dataDevolucao, setDataDevolucao] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
+  const [cancelamentoModalOpen, setCancelamentoModalOpen] = useState(false);
+  const [leaseParaCancelar, setLeaseParaCancelar] = useState<LeaseProps | null>(
+    null
+  );
 
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">(
     "diario"
@@ -237,11 +289,11 @@ export default function LeasePage() {
               : item.valor_negociado_mensal;
 
           return {
-            id_produto: item.id_produto || 0,
+            id_produto: item.id_patrimonio || 0,
             stocks: [
               {
                 id_stock: item.id_patrimonio,
-                numero_patrimonio: item.numero_patrimonio || "",
+                numero_patrimonio: item.id_patrimonio || "",
               },
             ],
             quantidade: 1,
@@ -281,22 +333,6 @@ export default function LeasePage() {
         setLoading(false);
       }
     }
-  };
-
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "";
-    try {
-      return new Date(dateString).toISOString();
-    } catch {
-      return "";
-    }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
   };
 
   const handleAddLease = () => {
@@ -368,7 +404,6 @@ export default function LeasePage() {
         numero_locacao: data.numero_locacao || "",
         complemento_locacao: data.complemento_locacao ?? undefined,
         bairro_locacao: data.bairro_locacao || "",
-
         cidade_locacao: data.cidade_locacao || "",
         estado_locacao: data.estado_locacao?.toUpperCase() || "SP",
         cep_locacao: data.cep_locacao || "",
@@ -387,7 +422,7 @@ export default function LeasePage() {
         ),
         status: data.status || "Ativo",
         leaseItems: leaseItems.flatMap((item) =>
-          item.stocks.map((stock) => ({
+          item.patrimonio.map((stock) => ({
             id_patrimonio: stock.id_stock,
             valor_unit_diario:
               item.periodo === "diario" ? item.valor_unitario : 0,
@@ -409,10 +444,34 @@ export default function LeasePage() {
 
       console.log("Payload final:", JSON.stringify(payload, null, 2));
 
+      let response;
       if (editLease?.id_locacao) {
-        await patchLease(payload, editLease.id_locacao);
+        response = await patchLease(payload, editLease.id_locacao);
       } else {
-        await createLease(payload);
+        // Armazena a resposta da criação da locação
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        response = await createLease(payload);
+
+        // Atualiza o status dos stocks apenas para novas locações
+        await Promise.all(
+          leaseItems.flatMap((item) =>
+            item.stocks.map((stock) =>
+              patchStock(
+                {
+                  status: "Alugado",
+                },
+                stock.id_stock
+              ).catch((error) => {
+                console.error(
+                  `Falha ao atualizar stock ${stock.id_stock}:`,
+                  error
+                );
+                // Você pode adicionar lógica adicional de tratamento de erro aqui
+                return null; // Continua com as outras atualizações
+              })
+            )
+          )
+        );
       }
 
       await fetchLeases();
@@ -427,7 +486,134 @@ export default function LeasePage() {
       setLoading(false);
     }
   };
+  const formatDateDatagrid = (
+    dateString: string | null | undefined
+  ): string => {
+    if (!dateString) return "";
 
+    try {
+      // Usa o parser do Luxon ou date-fns se já usar essas libs
+      // Solução vanilla:
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+
+      // Formata manualmente ignorando o timezone
+      const day = date.getUTCDate().toString().padStart(2, "0");
+      const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+      const year = date.getUTCFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "";
+    }
+  };
+  const handleOpenDevolucaoModal = (lease: LeaseProps) => {
+    setLeaseParaDevolver(lease);
+    setDevolucaoModalOpen(true);
+  };
+
+  const handleCloseDevolucaoModal = () => {
+    setDevolucaoModalOpen(false);
+    setLeaseParaDevolver(null);
+    setDataDevolucao(new Date().toISOString().split("T")[0]);
+  };
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as AlertColor, // 'success' | 'error' | 'info' | 'warning'
+  });
+
+  const showSnackbar = (message: string, severity: AlertColor) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+  const handleConfirmarDevolucao = async () => {
+    if (!leaseParaDevolver) return;
+
+    setLoading(true);
+    try {
+      // 1. Atualizar status dos itens para "Disponível"
+      await Promise.all(
+        leaseParaDevolver.leaseItems.map((item: LeaseItem) =>
+          patchStock({ status: "Disponível" }, item.id_patrimonio)
+        )
+      );
+
+      // 2. Atualizar a locação com data de devolução real
+      await patchLease(
+        {
+          id_locacao: leaseParaDevolver.id_locacao,
+          data_real_devolucao: new Date(dataDevolucao).toISOString(),
+          status: "Finalizado",
+        },
+        leaseParaDevolver.id_locacao
+      );
+
+      // 3. Atualizar a lista de locações
+      await fetchLeases();
+
+      // 4. Fechar modal e limpar estados
+      handleCloseDevolucaoModal();
+      showSnackbar("Devolução realizada com sucesso!", "success");
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      showSnackbar("Erro ao realizar devolução", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleOpenCancelamentoModal = (lease: LeaseProps) => {
+    setLeaseParaCancelar(lease);
+    setCancelamentoModalOpen(true);
+  };
+
+  const handleCloseCancelamentoModal = () => {
+    setCancelamentoModalOpen(false);
+    setLeaseParaCancelar(null);
+  };
+
+  const handleConfirmarCancelamento = async () => {
+    if (!leaseParaCancelar) return;
+
+    setLoading(true);
+    try {
+      // 1. Liberar os stocks (mudar status para "Disponível")
+      await Promise.all(
+        leaseParaCancelar.leaseItems.map((item: LeaseItem) =>
+          patchStock({ status: "Disponível" }, item.id_patrimonio)
+        )
+      );
+
+      // 2. Atualizar o status da locação para "Cancelado"
+      await patchLease(
+        {
+          id_locacao: leaseParaCancelar.id_locacao, // Include the required field
+          status: "Cancelado",
+          data_real_devolucao: new Date().toISOString(),
+        },
+        leaseParaCancelar.id_locacao
+      );
+
+      // 3. Atualizar a lista de locações
+      await fetchLeases();
+
+      // 4. Feedback e fechar modal
+      showSnackbar("Locação cancelada com sucesso!", "success");
+      handleCloseCancelamentoModal();
+    } catch (error) {
+      showSnackbar(
+        `Erro ao cancelar locação: ${
+          error instanceof Error ? error.message : "Erro desconhecido"
+        }`,
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
   const columns: GridColDef<LeaseProps>[] = [
     { field: "id_locacao", headerName: "Nº Locação", width: 100 },
     { field: "cliente_id", headerName: "ID Cliente", width: 100 },
@@ -435,13 +621,13 @@ export default function LeasePage() {
       field: "data_inicio",
       headerName: "Data Início",
       width: 120,
-      valueFormatter: (params) => formatDate(params),
+      valueFormatter: (params) => formatDateDatagrid(params),
     },
     {
       field: "data_prevista_devolucao",
       headerName: "Previsão Devolução",
       width: 150,
-      valueFormatter: (params) => formatDate(params),
+      valueFormatter: (params) => formatDateDatagrid(params),
     },
     {
       field: "valor_total",
@@ -450,41 +636,401 @@ export default function LeasePage() {
       valueFormatter: (params) => formatCurrency(params),
     },
     { field: "status", headerName: "Status", width: 100 },
-    {
-      field: "actions",
-      headerName: "Ações",
-      width: 120,
-      renderCell: (params) => (
-        <Box display="flex" gap={1}>
-          {/* Botão Editar - Corrigido para editar a locação */}
-          <Button
-            onClick={() => {
-              const leaseToEdit = leases.find(
-                (lease) => lease.id_locacao === params.row.id_locacao
-              );
-              console.log("leaseToEdit", leaseToEdit);
-              if (leaseToEdit) {
-                setEditLease(leaseToEdit);
-                setOpenForm(true);
-              }
-            }}
-          >
-            <MdEdit color="blue" />
-          </Button>
+    // {
+    //   field: "actions",
+    //   headerName: "Ações",
+    //   width: 120,
+    //   renderCell: (params) => (
+    //     <Box display="flex" gap={1}>
+    //       {/* Botão Editar - Corrigido para editar a locação */}
+    //       <Button
+    //         onClick={() => {
+    //           const leaseToEdit = leases.find(
+    //             (lease) => lease.id_locacao === params.row.id_locacao
+    //           );
+    //           console.log("leaseToEdit", leaseToEdit);
+    //           if (leaseToEdit) {
+    //             setEditLease(leaseToEdit);
+    //             setOpenForm(true);
+    //           }
+    //         }}
+    //       >
+    //         <MdEdit color="blue" />
+    //       </Button>
 
-          {/* Botão Excluir */}
-          <Button
-            title="Excluir"
-            onClick={() => {
-              setDeleteId(params.row.id_locacao);
-              setOpenDialog(true);
-            }}
-            sx={{ minWidth: "40px", padding: 0 }}
-          >
-            <MdDelete color="red" size={20} />
-          </Button>
-        </Box>
+    //       {/* Botão Excluir */}
+    //       <Button
+    //         title="Excluir"
+    //         onClick={() => {
+    //           setDeleteId(params.row.id_locacao);
+    //           setOpenDialog(true);
+    //         }}
+    //         sx={{ minWidth: "40px", padding: 0 }}
+    //       >
+    //         <MdDelete color="red" size={20} />
+    //       </Button>
+    //     </Box>
+    //   ),
+    // },
+    {
+      field: "devolucao",
+      headerName: "",
+      width: 90,
+      renderCell: (params) => (
+        <Tooltip
+          title={
+            params.row.status === "Finalizado" ||
+            params.row.status === "Cancelado"
+              ? "Locação já finalizada/cancelada"
+              : "Registrar devolução"
+          }
+        >
+          <span>
+            <Button
+              variant="outlined"
+              color={
+                params.row.status === "Finalizado" ||
+                params.row.status === "Cancelado"
+                  ? "inherit" // Usar "inherit" em vez de "default"
+                  : "secondary"
+              }
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenDevolucaoModal(params.row);
+              }}
+              disabled={
+                params.row.status === "Finalizado" ||
+                params.row.status === "Cancelado"
+              }
+              sx={{
+                textTransform: "none",
+                "&.Mui-disabled": {
+                  borderColor: "transparent",
+                  color: "text.disabled",
+                },
+              }}
+              startIcon={<TbTruckReturn size={18} />}
+            >
+              {/* {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"} */}
+            </Button>
+          </span>
+        </Tooltip>
       ),
+    },
+    {
+      field: "cancelamento",
+      headerName: "",
+      width: 90,
+      renderCell: (params) => (
+        <Tooltip
+          title={
+            params.row.status !== "Ativo"
+              ? "Somente locações ativas podem ser canceladas"
+              : "Cancelar locação"
+          }
+        >
+          <span>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation();
+                handleOpenCancelamentoModal(params.row);
+              }}
+              disabled={params.row.status !== "Ativo"}
+              sx={{
+                textTransform: "none",
+                "&.Mui-disabled": {
+                  borderColor: "transparent",
+                  color: "text.disabled",
+                },
+              }}
+              startIcon={<CancelIcon />} // Correct way to add an icon
+            >
+              Cancelar
+            </Button>
+          </span>
+        </Tooltip>
+      ),
+    },
+
+    {
+      field: "itens_patrimonio",
+      headerName: "Itens/Patrimônios",
+      width: 100,
+      renderCell: (params) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const [open, setOpen] = useState(false);
+        const items = params.row.leaseItems || [];
+
+        return (
+          <>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(true);
+              }}
+              variant="outlined"
+              size="small"
+              sx={{ textTransform: "none" }}
+            >
+              {items.length} {items.length === 1 ? "item" : "itens"}
+            </Button>
+
+            {items.length > 0 && (
+              <Dialog
+                open={open}
+                onClose={() => setOpen(false)}
+                maxWidth="md"
+                fullWidth
+              >
+                <DialogTitle
+                  sx={{ bgcolor: "primary.main", color: "white", py: 2 }}
+                >
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <span>Detalhes da Locação #{params.row.id_locacao}</span>
+                    <Chip
+                      label={params.row.status}
+                      color={
+                        params.row.status === "Ativo"
+                          ? "success"
+                          : params.row.status === "Finalizado"
+                          ? "primary"
+                          : "error"
+                      }
+                    />
+                  </Box>
+                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                    Cliente: {params.row.cliente.name}
+                  </Typography>
+                </DialogTitle>
+
+                <DialogContent>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      Informações da Locação
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6} sm={4}>
+                        <Typography>
+                          <strong>Data Início:</strong>{" "}
+                          {formatDate(params.row.data_inicio)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={4}>
+                        <Typography>
+                          <strong>Previsão Devolução:</strong>{" "}
+                          {formatDate(params.row.data_prevista_devolucao)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={4}>
+                        <Typography>
+                          <strong>Valor Total:</strong>{" "}
+                          {formatCurrency(Number(params.row.valor_total))}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Itens Locados
+                  </Typography>
+                  <TableContainer>
+                    <Table size="small" sx={{ border: "1px solid #e0e0e0" }}>
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: "action.hover" }}>
+                          <TableCell sx={{ fontWeight: "bold" }}>
+                            Produto
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }}>
+                            Patrimônio
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }} align="right">
+                            Valor Diário
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }} align="right">
+                            Valor Semanal
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }} align="right">
+                            Valor Mensal
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }}>
+                            Status
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {items.map((item: LeaseItemProps, index: number) => (
+                          <TableRow key={index} hover>
+                            <TableCell>
+                              <Box>
+                                <Typography fontWeight="medium">
+                                  {item.patrimonio.produto.name}{" "}
+                                  {/* Corrigido de stocks para patrimonio */}
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="textSecondary"
+                                >
+                                  {item.patrimonio.produto.marca}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              {item.patrimonio.numero_patrimonio}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(
+                                Number(item.valor_negociado_diario)
+                              )}
+                              <Typography variant="body2" color="textSecondary">
+                                (Original:{" "}
+                                {formatCurrency(
+                                  Number(item.patrimonio.produto.daily_value)
+                                )}
+                                )
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(
+                                Number(item.valor_negociado_semanal)
+                              )}
+                              <Typography variant="body2" color="textSecondary">
+                                (Original:{" "}
+                                {formatCurrency(
+                                  Number(item.patrimonio.produto.weekly_value)
+                                )}
+                                )
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(
+                                Number(item.valor_negociado_mensal)
+                              )}
+                              <Typography variant="body2" color="textSecondary">
+                                (Original:{" "}
+                                {formatCurrency(
+                                  Number(item.patrimonio.produto.monthly_value)
+                                )}
+                                )
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={item.patrimonio.status}
+                                size="small"
+                                color={
+                                  item.patrimonio.status === "Disponível"
+                                    ? "success"
+                                    : item.patrimonio.status === "Alocado"
+                                    ? "warning"
+                                    : "error"
+                                }
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                  <Button
+                    onClick={() => setOpen(false)}
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                  >
+                    Fechar
+                  </Button>
+                </DialogActions>
+              </Dialog>
+            )}
+          </>
+        );
+      },
+    },
+    {
+      field: "imprimir",
+      headerName: "Contrato",
+      width: 120,
+      renderCell: (params) => {
+        console.log(
+          "[PDF] Renderizando botão para locação:",
+          params.row.id_locacao
+        );
+
+        return (
+          <PDFDownloadLink
+            document={<LeaseContractPDF lease={params.row} />}
+            fileName={`contrato-locacao-${
+              params.row.id_locacao || "sem-id"
+            }.pdf`}
+            style={{ textDecoration: "none" }}
+          >
+            {({ loading, error }) => {
+              console.log(`[PDF] Estado: loading=${loading}, error=${error}`, {
+                locacaoId: params.row.id_locacao,
+                error,
+              });
+
+              return (
+                <Tooltip
+                  title={error ? "Erro ao gerar PDF" : "Gerar contrato em PDF"}
+                  arrow
+                >
+                  <span>
+                    <Button
+                      variant="outlined"
+                      color={error ? "error" : "primary"}
+                      size="small"
+                      startIcon={error ? <ErrorOutline /> : <FaFilePdf />}
+                      disabled={loading}
+                      onClick={() => {
+                        console.log(
+                          "[PDF] Botão clicado para locação:",
+                          params.row.id_locacao
+                        );
+                      }}
+                      sx={{
+                        minWidth: 50,
+                        "& .MuiButton-startIcon": {
+                          mr: 0.5,
+                        },
+                        "&.Mui-disabled": {
+                          opacity: 0.7,
+                          borderColor: "transparent",
+                        },
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <CircularProgress size={14} sx={{ mr: 1 }} />
+                          Gerando...
+                        </>
+                      ) : error ? (
+                        "Erro"
+                      ) : (
+                        ""
+                      )}
+                    </Button>
+                  </span>
+                </Tooltip>
+              );
+            }}
+          </PDFDownloadLink>
+        );
+      },
+      sortable: false,
+      filterable: false,
+      disableColumnMenu: true,
     },
   ];
 
@@ -497,7 +1043,136 @@ export default function LeasePage() {
       .includes(filterIdLocacao);
     return matchesClient && matchesLocacao;
   });
+  const generateLeasesPDF = () => {
+    const doc = new jsPDF();
 
+    // Configurações iniciais
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text("Relatório de Locações", 105, 15, { align: "center" });
+
+    // Data de emissão
+    doc.setFontSize(10);
+    doc.text(`Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, 14, 25);
+
+    // Para cada locação
+    leases.forEach((lease, index) => {
+      if (index > 0) {
+        doc.addPage(); // Nova página para cada locação (exceto a primeira)
+      }
+
+      // Dados da locação
+      doc.setFontSize(14);
+      doc.text(`Locação #${lease.id_locacao}`, 14, 35);
+
+      doc.setFontSize(10);
+      let y = 45;
+
+      // Informações básicas
+      doc.text(`Cliente: ${lease.cliente?.name || "Não informado"}`, 14, y);
+      y += 10;
+      doc.text(
+        `Endereço: ${[
+          lease.rua_locacao,
+          lease.numero_locacao,
+          lease.complemento_locacao,
+          lease.bairro_locacao,
+          lease.cidade_locacao,
+          lease.estado_locacao,
+        ]
+          .filter(Boolean)
+          .join(", ")}`,
+        14,
+        y
+      );
+      y += 10;
+      doc.text(
+        `Período: ${formatDate(lease.data_inicio)} até ${formatDate(
+          lease.data_prevista_devolucao
+        )}`,
+        14,
+        y
+      );
+      y += 10;
+      doc.text(`Valor Total: ${formatCurrency(lease.valor_total)}`, 14, y);
+      y += 15;
+
+      // Tabela de itens
+      doc.setFontSize(12);
+      doc.text("Itens Alugados:", 14, y);
+      y += 10;
+
+      if (lease.leaseItems?.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [["Produto", "Patrimônio", "Valor Unitário", "Período"]],
+          body: lease.leaseItems.map((item) => [
+            item.patrimonio?.produto?.name || "-",
+            item.patrimonio?.numero_patrimonio || "-",
+            formatCurrency(item.valor_negociado_diario),
+            // item.periodo || "-",
+          ]),
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: "bold",
+          },
+          styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            halign: "left",
+          },
+          margin: { top: y },
+        });
+        const doc = new jsPDF() as JsPDFWithAutoTable;
+        y = doc.lastAutoTable.finalY + 10;
+      } else {
+        doc.text("Nenhum item registrado", 20, y);
+        y += 10;
+      }
+
+      // Status e observações
+      doc.text(`Status: ${lease.status || "Não informado"}`, 14, y);
+      y += 10;
+      if (lease.observacoes) {
+        doc.text(`Observações: ${lease.observacoes}`, 14, y);
+      }
+    });
+
+    // Rodapé com número de páginas
+    const pageCount = doc.internal.pages.length;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(
+        `Página ${i} de ${pageCount}`,
+        doc.internal.pageSize.width - 30,
+        doc.internal.pageSize.height - 10
+      );
+    }
+
+    doc.save(`locacoes_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  // Funções auxiliares (adicionar ao componente)
+  const formatCurrency = (
+    value: number | string | null | undefined
+  ): string => {
+    const num = Number(value) || 0;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(num);
+  };
+
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleDateString("pt-BR");
+    } catch {
+      return "-";
+    }
+  };
   return (
     <Box sx={{ height: "100vh", backgroundColor: "#E0E0E0" }}>
       <Layout>
@@ -552,6 +1227,9 @@ export default function LeasePage() {
                 startIcon={<IoAddCircleOutline />}
               >
                 Nova Locação
+              </Button>
+              <Button variant="contained" onClick={generateLeasesPDF}>
+                Gerar PDF <PiFilePdf style={{ marginLeft: 8 }} />
               </Button>
             </Box>
 
@@ -619,10 +1297,11 @@ export default function LeasePage() {
                   : "Nova Locação"}
               </DialogTitle>
               <DialogContent dividers>
-                <Box sx={{ display: "flex", height: "95%" }}>
+                <Box sx={{ display: "flex", height: "70vh" }}>
                   <Box
                     sx={{
-                      width: "50%",
+                      height: "70vh",
+                      width: "70vw",
                       pr: 2,
                       overflowY: "auto",
                       borderRight: "1px solid #e0e0e0",
@@ -819,9 +1498,14 @@ export default function LeasePage() {
                       <Typography variant="subtitle1" sx={{ mb: 2 }}>
                         Adicionar Produto
                       </Typography>
-
                       <Autocomplete
-                        options={products.filter((p) => p.totalAvailable > 0)}
+                        options={products.filter(
+                          (p) =>
+                            p.totalAvailable > 0 &&
+                            !leaseItems.some(
+                              (item) => item.patrimonio.id_produto === p.id
+                            )
+                        )}
                         getOptionLabel={(option) =>
                           `${option.name} (${option.marca}) - ${option.totalAvailable} disponíveis`
                         }
@@ -969,19 +1653,26 @@ export default function LeasePage() {
                         <DataGrid
                           rows={leaseItems.flatMap((item, itemIndex) => {
                             const product = products.find(
-                              (p) => p.id === item.id_produto
+                              (p) => p.id === item.patrimonio.produto.id
                             );
-                            return item.stocks.map((stock, stockIndex) => ({
-                              id: `${itemIndex}-${stockIndex}`,
-                              produtoId: item.id_produto,
-                              nome: product?.name || "Desconhecido",
-                              patrimonio: stock.numero_patrimonio,
-                              valorUnitario: formatCurrency(
-                                item.valor_unitario
-                              ),
-                              periodo: item.periodo,
-                              rawItem: item,
-                            }));
+
+                            // Create an array with a single item (or multiple if patrimonio is actually an array)
+                            const patrimonios = Array.isArray(item.patrimonio)
+                              ? item.patrimonio
+                              : [item.patrimonio];
+
+                            return patrimonios.map(
+                              (patrimonio, stockIndex) => ({
+                                id: `${itemIndex}-${stockIndex}`,
+                                produtoId: patrimonio.produto.id, // Changed from item.patrimonio.id_produto
+                                nome: product?.name || "Desconhecido",
+                                patrimonio: patrimonio.numero_patrimonio,
+                                valorUnitario: formatCurrency(
+                                  item.valor_negociado_anual
+                                ),
+                                rawItem: item,
+                              })
+                            );
                           })}
                           columns={[
                             {
@@ -1014,7 +1705,8 @@ export default function LeasePage() {
                                   onClick={() => {
                                     const itemIndex = leaseItems.findIndex(
                                       (item) =>
-                                        item.id_produto === params.row.produtoId
+                                        item.patrimonio.produto.id ===
+                                        params.row.produtoId
                                     );
                                     handleRemoveLease(itemIndex);
                                   }}
@@ -1074,6 +1766,104 @@ export default function LeasePage() {
             </DialogActions>
           </Dialog>
         </Container>
+        <Dialog open={devolucaoModalOpen} onClose={handleCloseDevolucaoModal}>
+          <DialogTitle>Registrar Devolução</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <TextField
+                label="Data Real de Devolução"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={dataDevolucao}
+                onChange={(e) => setDataDevolucao(e.target.value)}
+              />
+
+              {leaseParaDevolver && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2">
+                    Itens a serem devolvidos:
+                  </Typography>
+                  <List dense>
+                    {leaseParaDevolver.leaseItems.map((item, index) => (
+                      <ListItem key={index}>
+                        <ListItemText
+                          primary={`${item.patrimonio.produto.name} (${item.patrimonio.numero_patrimonio})`}
+                          secondary={`Status atual: ${item.patrimonio.status}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDevolucaoModal}>Cancelar</Button>
+            <Button
+              onClick={handleConfirmarDevolucao}
+              variant="contained"
+              color="primary"
+            >
+              Confirmar Devolução
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          open={cancelamentoModalOpen}
+          onClose={handleCloseCancelamentoModal}
+        >
+          <DialogTitle>Confirmar Cancelamento</DialogTitle>
+          <DialogContent>
+            <Typography gutterBottom>
+              Tem certeza que deseja cancelar a locação #
+              {leaseParaCancelar?.id_locacao}?
+            </Typography>
+
+            {leaseParaCancelar && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2">
+                  Itens que serão liberados:
+                </Typography>
+                <List dense>
+                  {leaseParaCancelar.leaseItems.map((item, index) => (
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={`${item.patrimonio.produto.name} (${item.patrimonio.numero_patrimonio})`}
+                        secondary={`Status atual: ${item.patrimonio.status}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseCancelamentoModal}>Voltar</Button>
+            <Button
+              onClick={handleConfirmarCancelamento}
+              variant="contained"
+              color="error"
+              startIcon={<MdDelete />}
+            >
+              Confirmar Cancelamento
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Layout>
     </Box>
   );

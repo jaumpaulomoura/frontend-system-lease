@@ -1,3 +1,5 @@
+import { StockProps } from "./Stock";
+
 export interface ProductProps {
   id: number;
   name: string;
@@ -11,4 +13,5 @@ export interface ProductProps {
   createdAt?: string;
   updatedAt?: string;
   role?: number;
+  stocks?: StockProps[];
 }

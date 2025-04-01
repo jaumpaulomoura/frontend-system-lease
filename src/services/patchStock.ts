@@ -4,9 +4,7 @@ import axios, { AxiosResponse } from "axios";
 import api from "./api-routes";
 
 interface Props {
-  dateSai: string;
-  sectionId: number;
-  pedVenId: number;
+  status: string;
 }
 
 export async function patchStock(data: Props, id: number): Promise<StockProps> {

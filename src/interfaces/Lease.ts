@@ -1,3 +1,6 @@
+import { ClientProps } from "./Client";
+import { LeaseItemProps } from "./LeaseItens";
+
 export interface LeaseProps {
   id_locacao: number;
   cliente_id: number;
@@ -16,4 +19,6 @@ export interface LeaseProps {
   observacoes?: string;
   createdAt: string; // Pode ser um formato ISO string
   updatedAt: string; // Pode ser um formato ISO string
+  cliente: ClientProps;
+  leaseItems: LeaseItemProps[];
 }
