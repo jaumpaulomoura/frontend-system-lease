@@ -1,4 +1,4 @@
-"use client";
+// "use client";
 
 import { useContext, useEffect, useState } from "react";
 import { FiLogOut } from "react-icons/fi";

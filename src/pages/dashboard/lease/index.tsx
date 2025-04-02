@@ -1,4 +1,4 @@
-"use client";
+// "use client";
 
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { TbTruckReturn } from "react-icons/tb";
