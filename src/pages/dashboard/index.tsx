@@ -15,6 +15,15 @@ import { BarChart } from "@mui/x-charts/BarChart";
 import Layout from "@components/Layout";
 import { getStocksList } from "@services/getStocksList";
 import { getProductList } from "@services/getProductList";
+import { StockProps } from "@interfaces/Stock";
+// interface StockItem {
+//   id_produto: number;
+//   produto: {
+//     name: string;
+//     marca: string;
+//   };
+//   status: "Disponível" | "Alugado";
+// }
 
 interface Product {
   id: number;
@@ -72,7 +81,7 @@ export default function ProductStockChart() {
   }, []);
 
   // Process stock data into chart format
-  const processStockData = useCallback((stocks: any[]) => {
+  const processStockData = useCallback((stocks: StockProps[]) => {
     const productMap = stocks.reduce(
       (
         acc: Record<
@@ -114,7 +123,7 @@ export default function ProductStockChart() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const stocks = await getStocksList();
+        const stocks: StockProps[] = await getStocksList();
         const processedData = processStockData(stocks);
 
         setChartData(processedData);
@@ -137,7 +146,7 @@ export default function ProductStockChart() {
   const handleProductFilter = useCallback(
     (event: SelectChangeEvent<number | "all">) => {
       const productId = event.target.value;
-      setSelectedProduct(productId);
+      setSelectedProduct(productId === "all" ? "all" : Number(productId));
 
       if (productId === "all" || !chartData) {
         setFilteredData({
@@ -165,9 +174,9 @@ export default function ProductStockChart() {
   const shouldRotateLabels = filteredData?.products.length
     ? filteredData.products.length > 5 || containerWidth < 600
     : false;
-  const barSize = filteredData?.products.length
-    ? Math.max(30, Math.min(60, 400 / filteredData.products.length))
-    : 40;
+  // const barSize = filteredData?.products.length
+  //   ? Math.max(30, Math.min(60, 400 / filteredData.products.length))
+  //   : 40;
   const bottomMargin = filteredData?.products.length
     ? filteredData.products.length > 3
       ? 120
@@ -292,7 +301,7 @@ export default function ProductStockChart() {
                       dataKey: "available",
                       label: "Disponível",
                       color: theme.palette.success.main,
-                      barSize,
+                      // barWidth,
                       valueFormatter: (value) =>
                         `${value} ${value === 1 ? "item" : "itens"}`,
                     },
@@ -300,7 +309,7 @@ export default function ProductStockChart() {
                       dataKey: "rented",
                       label: "Alugado",
                       color: theme.palette.error.main,
-                      barSize,
+                      // barWidth,
                       valueFormatter: (value) =>
                         `${value} ${value === 1 ? "item" : "itens"}`,
                     },

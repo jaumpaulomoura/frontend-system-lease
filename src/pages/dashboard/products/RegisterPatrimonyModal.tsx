@@ -75,15 +75,16 @@ export default function RegisterPatrimonyModal({
       const stockItems: StockProps[] = Array.from(
         { length: data.quantity },
         (_, index) => ({
-          id_produto: product.id,
+          id_produto: product.id, // ID do produto
           numero_patrimonio: `PAT-${index + 1}-${Math.floor(
             Math.random() * 1000
-          )}`,
-          nota_fiscal: data.nfNumber,
-          valor_pago: data.value,
-          status: "Disponível",
-          observacoes: `Adicionado automaticamente`,
+          )}`, // Geração de número de patrimônio
+          nota_fiscal: data.nfNumber, // Número da nota fiscal
+          valor_pago: data.value, // Valor pago
+          status: "Disponível", // Status fixo como "Disponível"
+          observacoes: `Adicionado automaticamente`, // Observações
           id: 0, // O backend deve definir o ID real
+          produto: product, // Produto (agora atribuindo o objeto produto)
         })
       );
 

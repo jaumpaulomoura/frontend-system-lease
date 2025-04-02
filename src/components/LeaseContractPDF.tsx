@@ -223,7 +223,7 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
               {safeData.itens.map((item, index) => (
                 <View style={styles.tableRow} key={index}>
                   <Text style={styles.tableCell}>
-                    {item.patrimonio?.produto?.name || "-"}
+                    {/* {item.patrimonio?.produto?. || "-"} */}
                   </Text>
                   <Text style={styles.tableCell}>
                     {item.patrimonio?.numero_patrimonio || "-"}
