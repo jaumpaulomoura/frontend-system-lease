@@ -35,6 +35,7 @@ import {
   Alert,
   CircularProgress,
   AlertColor,
+  InputAdornment,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { InitialContext } from "@contexts/InitialContext";
@@ -56,36 +57,31 @@ import LeaseContractPDF from "@components/LeaseContractPDF";
 import { ErrorOutline } from "@mui/icons-material";
 import { PiFilePdf } from "react-icons/pi";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import autoTable, { UserOptions } from "jspdf-autotable";
 import { LeaseItemProps } from "@interfaces/LeaseItens";
 // import clients from "@pages/api/clients";
+
 declare module "jspdf" {
   interface jsPDF {
-    autoTable: (options: autoTable.AutoTableOptions) => jsPDF;
+    autoTable: typeof autoTable;
+    lastAutoTable?: {
+      finalY?: number;
+    };
   }
 }
 interface JsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: autoTable.AutoTableOptions) => JsPDFWithAutoTable;
+  autoTable: (options: UserOptions) => JsPDFWithAutoTable;
   lastAutoTable: {
     finalY: number;
-    // Outras propriedades que você possa precisar
   };
 }
+
 interface ClientProps {
   id: number;
   name: string;
 }
+// type Periodo = "diario" | "semanal" | "mensal" | "anual";
 
-// interface LeaseItemProps {
-//   id_produto: number;
-//   stocks: {
-//     id_stock: number;
-//     numero_patrimonio: string;
-//   }[];
-//   quantidade: number;
-//   periodo: "diario" | "semanal" | "mensal";
-//   valor_unitario: number;
-// }
 interface LeaseRequestPayload {
   id_locacao: number;
   cliente_id: number;
@@ -169,9 +165,9 @@ export default function LeasePage() {
     null
   );
 
-  const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">(
-    "diario"
-  );
+  const [period, setPeriod] = useState<
+    "diario" | "semanal" | "mensal" | "anual"
+  >("diario");
 
   const form = useForm<FormData>({
     mode: "onChange",
@@ -226,7 +222,7 @@ export default function LeasePage() {
       const productsWithStock = productList.map((product) => {
         const available = stockList.filter(
           (stock) =>
-            stock.id_produto === product.id && stock.status === "Disponível"
+            stock.produto.id === product.id && stock.status === "Disponível"
         );
         return {
           ...product,
@@ -248,69 +244,6 @@ export default function LeasePage() {
     fetchLeases();
     fetchProductsWithStock();
   }, [fetchClients, fetchLeases, fetchProductsWithStock]);
-
-  useEffect(() => {
-    if (editLease) {
-      form.reset({
-        rua_locacao: editLease.rua_locacao,
-        numero_locacao: editLease.numero_locacao,
-        complemento_locacao: editLease.complemento_locacao || "",
-        bairro_locacao: editLease.bairro_locacao,
-        cidade_locacao: editLease.cidade_locacao,
-        estado_locacao: editLease.estado_locacao,
-        cep_locacao: editLease.cep_locacao,
-        data_inicio: editLease.data_inicio.split("T")[0],
-        data_prevista_devolucao:
-          editLease.data_prevista_devolucao.split("T")[0],
-        data_real_devolucao: editLease.data_real_devolucao
-          ? editLease.data_real_devolucao.split("T")[0]
-          : "",
-        valor_total: editLease.valor_total || 0,
-        status: editLease.status,
-        observacoes: editLease.observacoes || "",
-      });
-
-      if (editLease.leaseItems && editLease.leaseItems.length > 0) {
-        const formattedItems = editLease.leaseItems.map((item) => {
-          const periodo =
-            item.valor_negociado_diario > 0
-              ? "diario"
-              : item.valor_negociado_semanal > 0
-              ? "semanal"
-              : item.valor_negociado_mensal > 0
-              ? "mensal"
-              : "diario";
-
-          const valor_unitario =
-            periodo === "diario"
-              ? item.valor_negociado_diario
-              : periodo === "semanal"
-              ? item.valor_negociado_semanal
-              : item.valor_negociado_mensal;
-
-          return {
-            id_produto: item.id_patrimonio || 0,
-            stocks: [
-              {
-                id_stock: item.id_patrimonio,
-                numero_patrimonio: item.id_patrimonio || "",
-              },
-            ],
-            quantidade: 1,
-            periodo: periodo,
-            valor_unitario: valor_unitario,
-            valor_negociado_diario: item.valor_negociado_diario,
-            valor_negociado_semanal: item.valor_negociado_semanal,
-            valor_negociado_mensal: item.valor_negociado_mensal,
-          };
-        });
-
-        setLeaseItems(formattedItems);
-      } else {
-        setLeaseItems([]);
-      }
-    }
-  }, [editLease, form]);
 
   useEffect(() => {
     if (selectedLease) {
@@ -338,34 +271,67 @@ export default function LeasePage() {
   const handleAddLease = () => {
     if (!selectedLease || selectedStocks.length === 0) return;
 
-    const unitPrice = parseFloat(
-      period === "diario"
-        ? selectedLease.daily_value?.toString() || "0"
-        : period === "semanal"
-        ? selectedLease.weekly_value?.toString() || "0"
-        : selectedLease.monthly_value?.toString() || "0"
-    );
-
-    const newItem = {
-      id_produto: selectedLease.id,
-      stocks: selectedStocks.map((stock) => ({
-        id_stock: stock.id!,
-        numero_patrimonio: stock.numero_patrimonio || "",
-      })),
-      quantidade: quantity,
-      periodo: period,
-      valor_unitario: unitPrice,
+    const getUnitPrice = () => {
+      switch (period) {
+        case "diario":
+          return selectedLease.daily_value || 0;
+        case "semanal":
+          return selectedLease.weekly_value || 0;
+        case "mensal":
+          return selectedLease.monthly_value || 0;
+        default:
+          return 0;
+      }
     };
 
-    setLeaseItems([...leaseItems, newItem]);
+    const unitPrice = getUnitPrice();
 
-    const newTotal = [...leaseItems, newItem].reduce(
-      (total, item) => total + item.valor_unitario * item.quantidade,
-      0
-    );
+    // Cria um item para CADA patrimônio selecionado
+    const newItems = selectedStocks.map((stock) => ({
+      id_item_locacao: 0,
+      id_locacao: 0,
+      id_patrimonio: stock.id,
+      valor_unit_diario: period === "diario" ? unitPrice : 0,
+      valor_unit_semanal: period === "semanal" ? unitPrice : 0,
+      valor_unit_mensal: period === "mensal" ? unitPrice : 0,
+      valor_unit_anual: 0,
+      valor_negociado_diario: period === "diario" ? unitPrice : 0,
+      valor_negociado_semanal: period === "semanal" ? unitPrice : 0,
+      valor_negociado_mensal: period === "mensal" ? unitPrice : 0,
+      valor_negociado_anual: 0,
+      periodo: period,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      patrimonio: {
+        ...stock,
+        produto: {
+          id: selectedLease.id,
+          name: selectedLease.name,
+          marca: selectedLease.marca || "",
+          active: true,
+          daily_value: selectedLease.daily_value || 0,
+          weekly_value: selectedLease.weekly_value || 0,
+          monthly_value: selectedLease.monthly_value || 0,
+        },
+        status: "Alugado",
+      },
+    }));
 
-    form.setValue("valor_total", parseFloat(newTotal.toFixed(2)));
+    setLeaseItems([...leaseItems, ...newItems]); // Adiciona TODOS os itens novos
 
+    // Atualiza o total considerando todos os itens
+    const novoTotal = [...leaseItems, ...newItems].reduce((total, item) => {
+      return (
+        total +
+        (item.periodo === "diario"
+          ? item.valor_negociado_diario
+          : item.periodo === "semanal"
+          ? item.valor_negociado_semanal
+          : item.valor_negociado_mensal)
+      );
+    }, 0);
+
+    form.setValue("valor_total", novoTotal);
     setselectedLease(null);
     setSelectedStocks([]);
     setQuantity(1);
@@ -380,6 +346,11 @@ export default function LeasePage() {
   const handleCreateOrUpdate = async (data: FormData) => {
     setLoading(true);
     try {
+      // Validate lease items first
+      if (leaseItems.length === 0) {
+        throw new Error("Adicione pelo menos um item à locação");
+      }
+
       const ensureDateString = (
         dateString: string | null | undefined
       ): string => {
@@ -397,6 +368,7 @@ export default function LeasePage() {
         );
       }
 
+      // Build the payload with proper error handling
       const payload: LeaseRequestPayload = {
         ...data,
         id_locacao: editLease?.id_locacao ?? 0,
@@ -412,34 +384,40 @@ export default function LeasePage() {
         data_real_devolucao: data.data_real_devolucao
           ? ensureDateString(data.data_real_devolucao)
           : undefined,
-        valor_total: parseFloat(
+        valor_total: Number(
           leaseItems
-            .reduce(
-              (total, item) => total + item.valor_unitario * item.quantidade,
-              0
-            )
+            .reduce((total, item) => {
+              const valor =
+                item.periodo === "diario"
+                  ? Number(item.valor_negociado_diario) || 0
+                  : item.periodo === "semanal"
+                  ? Number(item.valor_negociado_semanal) || 0
+                  : Number(item.valor_negociado_mensal) || 0;
+              return total + valor;
+            }, 0)
             .toFixed(2)
         ),
         status: data.status || "Ativo",
-        leaseItems: leaseItems.flatMap((item) =>
-          item.patrimonio.map((stock) => ({
-            id_patrimonio: stock.id_stock,
-            valor_unit_diario:
-              item.periodo === "diario" ? item.valor_unitario : 0,
-            valor_unit_semanal:
-              item.periodo === "semanal" ? item.valor_unitario : 0,
-            valor_unit_mensal:
-              item.periodo === "mensal" ? item.valor_unitario : 0,
+        leaseItems: leaseItems.map((item) => {
+          const patrimonioId = item.patrimonio?.id || 0;
+
+          if (!patrimonioId) {
+            console.error("Invalid lease item:", item);
+            throw new Error("Item inválido: ID do patrimônio não encontrado");
+          }
+
+          return {
+            id_patrimonio: patrimonioId,
+            valor_unit_diario: Number(item.valor_negociado_diario) || 0,
+            valor_unit_semanal: Number(item.valor_negociado_semanal) || 0,
+            valor_unit_mensal: Number(item.valor_negociado_mensal) || 0,
             valor_unit_anual: 0,
-            valor_negociado_diario:
-              item.periodo === "diario" ? item.valor_unitario : 0,
-            valor_negociado_semanal:
-              item.periodo === "semanal" ? item.valor_unitario : 0,
-            valor_negociado_mensal:
-              item.periodo === "mensal" ? item.valor_unitario : 0,
+            valor_negociado_diario: Number(item.valor_negociado_diario) || 0,
+            valor_negociado_semanal: Number(item.valor_negociado_semanal) || 0,
+            valor_negociado_mensal: Number(item.valor_negociado_mensal) || 0,
             valor_negociado_anual: 0,
-          }))
-        ),
+          };
+        }),
       };
 
       console.log("Payload final:", JSON.stringify(payload, null, 2));
@@ -448,29 +426,29 @@ export default function LeasePage() {
       if (editLease?.id_locacao) {
         response = await patchLease(payload, editLease.id_locacao);
       } else {
-        // Armazena a resposta da criação da locação
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         response = await createLease(payload);
 
-        // Atualiza o status dos stocks apenas para novas locações
+        // Update stock status - using the correct property (stocks or patrimonio)
         await Promise.all(
-          leaseItems.flatMap((item) =>
-            item.stocks.map((stock) =>
-              patchStock(
-                {
-                  status: "Alugado",
-                },
-                stock.id_stock
-              ).catch((error) => {
+          leaseItems.flatMap((item) => {
+            // Verifica se existe um patrimônio válido
+            if (!item.patrimonio?.id) {
+              console.error("Item sem patrimônio válido:", item);
+              return [];
+            }
+
+            // Cria o payload para atualizar o status do patrimônio
+            return patchStock({ status: "Alugado" }, item.patrimonio.id).catch(
+              (error) => {
                 console.error(
-                  `Falha ao atualizar stock ${stock.id_stock}:`,
+                  `Falha ao atualizar patrimônio ${item.patrimonio.id}:`,
                   error
                 );
-                // Você pode adicionar lógica adicional de tratamento de erro aqui
-                return null; // Continua com as outras atualizações
-              })
-            )
-          )
+                return null;
+              }
+            );
+          })
         );
       }
 
@@ -479,9 +457,13 @@ export default function LeasePage() {
       setEditLease(null);
       setLeaseItems([]);
       form.reset();
+      showSnackbar("Locação salva com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar locação:", error);
-      alert(error instanceof Error ? error.message : "Erro ao salvar locação");
+      showSnackbar(
+        error instanceof Error ? error.message : "Erro ao salvar locação",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -962,10 +944,10 @@ export default function LeasePage() {
       headerName: "Contrato",
       width: 120,
       renderCell: (params) => {
-        console.log(
-          "[PDF] Renderizando botão para locação:",
-          params.row.id_locacao
-        );
+        // console.log(
+        //   "[PDF] Renderizando botão para locação:",
+        //   params.row.id_locacao
+        // );
 
         return (
           <PDFDownloadLink
@@ -976,10 +958,10 @@ export default function LeasePage() {
             style={{ textDecoration: "none" }}
           >
             {({ loading, error }) => {
-              console.log(`[PDF] Estado: loading=${loading}, error=${error}`, {
-                locacaoId: params.row.id_locacao,
-                error,
-              });
+              // console.log(`[PDF] Estado: loading=${loading}, error=${error}`, {
+              //   locacaoId: params.row.id_locacao,
+              //   error,
+              // });
 
               return (
                 <Tooltip
@@ -1044,7 +1026,7 @@ export default function LeasePage() {
     return matchesClient && matchesLocacao;
   });
   const generateLeasesPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF() as JsPDFWithAutoTable;
 
     // Configurações iniciais
     doc.setFontSize(20);
@@ -1058,7 +1040,7 @@ export default function LeasePage() {
     // Para cada locação
     leases.forEach((lease, index) => {
       if (index > 0) {
-        doc.addPage(); // Nova página para cada locação (exceto a primeira)
+        doc.addPage();
       }
 
       // Dados da locação
@@ -1109,8 +1091,20 @@ export default function LeasePage() {
           body: lease.leaseItems.map((item) => [
             item.patrimonio?.produto?.name || "-",
             item.patrimonio?.numero_patrimonio || "-",
-            formatCurrency(item.valor_negociado_diario),
-            // item.periodo || "-",
+            formatCurrency(
+              item.periodo === "diario"
+                ? item.valor_negociado_diario
+                : item.periodo === "semanal"
+                ? item.valor_negociado_semanal
+                : item.valor_negociado_mensal
+            ),
+            item.periodo === "diario"
+              ? "Diário"
+              : item.periodo === "semanal"
+              ? "Semanal"
+              : item.periodo === "mensal"
+              ? "Mensal"
+              : "-",
           ]),
           headStyles: {
             fillColor: [41, 128, 185],
@@ -1124,7 +1118,8 @@ export default function LeasePage() {
           },
           margin: { top: y },
         });
-        const doc = new jsPDF() as JsPDFWithAutoTable;
+
+        // Atualiza a posição Y usando a mesma instância do doc
         y = doc.lastAutoTable.finalY + 10;
       } else {
         doc.text("Nenhum item registrado", 20, y);
@@ -1444,18 +1439,26 @@ export default function LeasePage() {
                       }}
                     >
                       <TextField
-                        {...form.register("valor_total", {
-                          valueAsNumber: true,
-                        })}
+                        {...form.register("valor_total")}
                         label="Valor Total"
-                        type="number"
-                        size="small"
-                        inputProps={{ step: "0.01", readOnly: true }}
-                        value={leaseItems.reduce(
-                          (total, item) =>
-                            total + item.valor_unitario * item.quantidade,
-                          0
-                        )}
+                        value={leaseItems
+                          .reduce((total, item) => {
+                            return (
+                              total +
+                              (item.periodo === "diario"
+                                ? Number(item.valor_negociado_diario)
+                                : item.periodo === "semanal"
+                                ? Number(item.valor_negociado_semanal)
+                                : Number(item.valor_negociado_mensal))
+                            );
+                          }, 0)
+                          .toFixed(2)}
+                        InputProps={{
+                          readOnly: true,
+                          startAdornment: (
+                            <InputAdornment position="start">R$</InputAdornment>
+                          ),
+                        }}
                       />
                       <TextField
                         {...form.register("status")}
@@ -1499,13 +1502,27 @@ export default function LeasePage() {
                         Adicionar Produto
                       </Typography>
                       <Autocomplete
-                        options={products.filter(
-                          (p) =>
-                            p.totalAvailable > 0 &&
-                            !leaseItems.some(
-                              (item) => item.patrimonio.id_produto === p.id
-                            )
-                        )}
+                        options={products.filter((p) => {
+                          // Verificação de segurança para produtos
+                          if (!p || typeof p.totalAvailable === "undefined") {
+                            console.warn("Produto inválido encontrado:", p);
+                            return false;
+                          }
+
+                          const isAvailable = p.totalAvailable > 0;
+
+                          const isAlreadyAdded = leaseItems.some((item) => {
+                            // Verificação completa da estrutura do item
+                            if (!item || !item.patrimonio) {
+                              console.warn("Item de locação inválido:", item);
+                              return false;
+                            }
+
+                            return item.patrimonio.id_produto === p.id;
+                          });
+
+                          return isAvailable && !isAlreadyAdded;
+                        })}
                         getOptionLabel={(option) =>
                           `${option.name} (${option.marca}) - ${option.totalAvailable} disponíveis`
                         }
@@ -1599,6 +1616,7 @@ export default function LeasePage() {
                                     | "diario"
                                     | "semanal"
                                     | "mensal"
+                                    | "anual"
                                 )
                               }
                             >
@@ -1651,29 +1669,62 @@ export default function LeasePage() {
                     >
                       {leaseItems.length > 0 ? (
                         <DataGrid
-                          rows={leaseItems.flatMap((item, itemIndex) => {
-                            const product = products.find(
-                              (p) => p.id === item.patrimonio.produto.id
-                            );
+                          rows={leaseItems.flatMap(
+                            (item: LeaseItemProps, itemIndex: number) => {
+                              // Verificação segura do item e do patrimônio
+                              if (!item || !item.patrimonio) {
+                                console.warn(
+                                  "Item de locação inválido ignorado:",
+                                  item
+                                );
+                                return [];
+                              }
 
-                            // Create an array with a single item (or multiple if patrimonio is actually an array)
-                            const patrimonios = Array.isArray(item.patrimonio)
-                              ? item.patrimonio
-                              : [item.patrimonio];
+                              // Encontra o produto correspondente ou usa fallback
+                              const product = products.find(
+                                (p) => p.id === item.patrimonio.produto.id
+                              ) || {
+                                name: "Produto Desconhecido",
+                                marca: "",
+                                daily_value: 0,
+                                weekly_value: 0,
+                                monthly_value: 0,
+                              };
 
-                            return patrimonios.map(
-                              (patrimonio, stockIndex) => ({
-                                id: `${itemIndex}-${stockIndex}`,
-                                produtoId: patrimonio.produto.id, // Changed from item.patrimonio.id_produto
-                                nome: product?.name || "Desconhecido",
-                                patrimonio: patrimonio.numero_patrimonio,
-                                valorUnitario: formatCurrency(
-                                  item.valor_negociado_anual
-                                ),
+                              // Determina o período baseado nos valores preenchidos
+                              const periodo =
+                                item.valor_negociado_diario > 0
+                                  ? "diario"
+                                  : item.valor_negociado_semanal > 0
+                                  ? "semanal"
+                                  : item.valor_negociado_mensal > 0
+                                  ? "mensal"
+                                  : "diario"; // padrão
+
+                              // Determina o valor unitário baseado no período
+                              const valorUnitario =
+                                periodo === "diario"
+                                  ? item.valor_negociado_diario
+                                  : periodo === "semanal"
+                                  ? item.valor_negociado_semanal
+                                  : item.valor_negociado_mensal;
+
+                              return {
+                                id: `${itemIndex}-0`,
+                                produtoId: item.patrimonio.produto.id,
+                                nome: product.name,
+                                marca: product.marca,
+                                patrimonio:
+                                  item.patrimonio.numero_patrimonio ||
+                                  `Patrimônio ${itemIndex}`,
+                                valorUnitario: valorUnitario
+                                  ? formatCurrency(valorUnitario)
+                                  : "R$ 0,00",
+                                periodo,
                                 rawItem: item,
-                              })
-                            );
-                          })}
+                              };
+                            }
+                          )}
                           columns={[
                             {
                               field: "nome",
@@ -1694,6 +1745,18 @@ export default function LeasePage() {
                               field: "periodo",
                               headerName: "Período",
                               width: 100,
+                              valueFormatter: (params) => {
+                                switch (params) {
+                                  case "diario":
+                                    return "Diário";
+                                  case "semanal":
+                                    return "Semanal";
+                                  case "mensal":
+                                    return "Mensal";
+                                  default:
+                                    return params;
+                                }
+                              },
                             },
                             {
                               field: "actions",
@@ -1705,7 +1768,7 @@ export default function LeasePage() {
                                   onClick={() => {
                                     const itemIndex = leaseItems.findIndex(
                                       (item) =>
-                                        item.patrimonio.produto.id ===
+                                        item.patrimonio.id_produto ===
                                         params.row.produtoId
                                     );
                                     handleRemoveLease(itemIndex);
@@ -1718,7 +1781,7 @@ export default function LeasePage() {
                             },
                           ]}
                           disableRowSelectionOnClick
-                          autoHeight={false}
+                          autoHeight
                           initialState={{
                             pagination: {
                               paginationModel: { pageSize: 10 },

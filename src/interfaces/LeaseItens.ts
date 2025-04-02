@@ -15,4 +15,5 @@ export interface LeaseItemProps {
   createdAt: Date | string; // Melhor como Date, mas pode aceitar string
   updatedAt: Date | string;
   patrimonio: StockProps; // "stocks" foi alterado para "patrimonio" para consistência
+  periodo?: "diario" | "semanal" | "mensal" | "anual";
 }

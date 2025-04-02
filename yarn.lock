@@ -788,6 +788,13 @@
   resolved "https://registry.npmjs.org/@types/json5/-/json5-0.0.29.tgz"
   integrity sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==
 
+"@types/jspdf@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.npmjs.org/@types/jspdf/-/jspdf-2.0.0.tgz"
+  integrity sha512-oonYDXI4GegGaG7FFVtriJ+Yqlh4YR3L3NVDiwCEBVG7sbya19SoGx4MW4kg1MCMRPgkbbFTck8YKJL8PrkDfA==
+  dependencies:
+    jspdf "*"
+
 "@types/node@^20":
   version "20.17.25"
   resolved "https://registry.npmjs.org/@types/node/-/node-20.17.25.tgz"
@@ -2534,7 +2541,7 @@ jspdf-autotable@^5.0.2:
   resolved "https://registry.npmjs.org/jspdf-autotable/-/jspdf-autotable-5.0.2.tgz"
   integrity sha512-YNKeB7qmx3pxOLcNeoqAv3qTS7KuvVwkFe5AduCawpop3NOkBUtqDToxNc225MlNecxT4kP2Zy3z/y/yvGdXUQ==
 
-"jspdf@^2 || ^3", jspdf@^3.0.1:
+jspdf@*, "jspdf@^2 || ^3", jspdf@^3.0.1:
   version "3.0.1"
   resolved "https://registry.npmjs.org/jspdf/-/jspdf-3.0.1.tgz"
   integrity sha512-qaGIxqxetdoNnFQQXxTKUD9/Z7AloLaw94fFsOiJMxbfYdBbrBuhWmbzI8TVjrw7s3jBY1PFHofBKMV/wZPapg==
