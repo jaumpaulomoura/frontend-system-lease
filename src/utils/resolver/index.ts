@@ -58,29 +58,39 @@ export const patrimonySchema = yup.object({
   numero_patrimonio: yup.string().optional(),
 });
 export const ClientResolver = yup.object({
-  id: yup
-    .number()
-    .optional() // Permite undefined no id
-    .positive("ID deve ser um número positivo"),
-  name: yup
+  name: yup.string().required("Nome é obrigatório"),
+  cpf_cnpj: yup
     .string()
-    .required("Nome é obrigatório")
-    .min(3, "Nome deve ter pelo menos 3 caracteres"),
-  cpf_cnpj: yup.string().required("CPF/CNPJ é obrigatório"),
-  telefone: yup.string().required("Telefone é obrigatório"),
-  email: yup.string().required("Email é obrigatório").email("Email inválido"),
+    .required("CPF/CNPJ é obrigatório")
+    .matches(
+      /(^\d{3}\.\d{3}\.\d{3}-\d{2}$)|(^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$)|(^\d{11}$)|(^\d{14}$)/,
+      "CPF ou CNPJ inválido"
+    ),
+  telefone: yup
+    .string()
+    .required("Telefone é obrigatório")
+    .matches(/^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/, "Telefone inválido"),
+  email: yup.string().email("Email inválido").required("Email é obrigatório"),
+
   rua: yup.string().required("Rua é obrigatória"),
   numero: yup.string().required("Número é obrigatório"),
-  complemento: yup.string().optional(),
+  complemento: yup.string().nullable(),
   bairro: yup.string().required("Bairro é obrigatório"),
   cidade: yup.string().required("Cidade é obrigatória"),
   estado: yup.string().required("Estado é obrigatório"),
-  cep: yup.string().required("CEP é obrigatório"),
-  rua_cobranca: yup.string().optional(),
-  numero_cobranca: yup.string().optional(),
-  complemento_cobranca: yup.string().optional(),
-  bairro_cobranca: yup.string().optional(),
-  cidade_cobranca: yup.string().optional(),
-  estado_cobranca: yup.string().optional(),
-  cep_cobranca: yup.string().optional(),
+  cep: yup
+    .string()
+    .required("CEP é obrigatório")
+    .matches(/^\d{5}-?\d{3}$/, "CEP inválido"),
+
+  rua_cobranca: yup.string().required("Rua de cobrança é obrigatória"),
+  numero_cobranca: yup.string().required("Número de cobrança é obrigatório"),
+  complemento_cobranca: yup.string().nullable(),
+  bairro_cobranca: yup.string().required("Bairro de cobrança é obrigatório"),
+  cidade_cobranca: yup.string().required("Cidade de cobrança é obrigatória"),
+  estado_cobranca: yup.string().required("Estado de cobrança é obrigatório"),
+  cep_cobranca: yup
+    .string()
+    .required("CEP de cobrança é obrigatório")
+    .matches(/^\d{5}-?\d{3}$/, "CEP de cobrança inválido"),
 });

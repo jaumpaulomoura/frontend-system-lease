@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { MdDelete, MdEdit } from "react-icons/md";
+import { Snackbar, Alert } from "@mui/material";
 import { PiFilePdf } from "react-icons/pi";
 import {
   Box,
@@ -44,6 +45,11 @@ export default function UserPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [filterName, setFilterName] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
   const form = useForm<FormData>({
     resolver: yupResolver(UserResolver),
     mode: "onChange",
@@ -81,29 +87,41 @@ export default function UserPage() {
   const handleDelete = async () => {
     if (deleteId) {
       setLoading(true);
-      await deleteUser(deleteId.toString());
-      setUsers((prev) => prev.filter((user) => user.id !== deleteId));
-      setDeleteId(null);
-      setOpenDialog(false);
-      setLoading(false);
+      try {
+        await deleteUser(deleteId.toString());
+        setUsers((prev) => prev.filter((user) => user.id !== deleteId));
+        setSnackbar({
+          open: true,
+          message: "Usuário excluído com sucesso!",
+          severity: "success",
+        });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: "Erro ao excluir usuário",
+          severity: "error",
+        });
+      } finally {
+        setDeleteId(null);
+        setOpenDialog(false);
+        setLoading(false);
+      }
     }
   };
-
   const handleCreateOrUpdate = async (data: FormData) => {
     setLoading(true);
     try {
-      const userData = {
-        ...data,
-        password: data.password || "defaultPassword", // Valor default
-      };
+      const userData = { ...data };
 
-      if (!userData.password && !editUser?.id) {
+      if (editUser?.id && !userData.password) {
+        // Em edição, remove o campo se estiver vazio
+        delete userData.password;
+      } else if (!editUser?.id && !userData.password) {
+        // Em criação, senha é obrigatória
         throw new Error("A senha é obrigatória!");
       }
 
-      // if (!userData.password && editUser?.id) {
-      //   delete userData.password; // Não envia senha na edição
-      // }
       if (editUser?.id) {
         await patchUser(userData, editUser.id);
         setUsers((prev) =>
@@ -111,16 +129,42 @@ export default function UserPage() {
             user.id === editUser.id ? { ...user, ...userData } : user
           )
         );
+        setSnackbar({
+          open: true,
+          message: "Usuário atualizado com sucesso!",
+          severity: "success",
+        });
       } else {
-        const newUser = await createUser(userData);
+        // Aqui a senha está garantida como string
+        const { password, ...rest } = userData;
+        const newUser = await createUser({
+          ...rest,
+          password: password as string,
+        });
         setUsers((prev) => [...prev, newUser]);
+        setSnackbar({
+          open: true,
+          message: "Usuário criado com sucesso!",
+          severity: "success",
+        });
       }
+
       setOpenForm(false);
       setEditUser(null);
+      form.reset();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error(error);
+      setSnackbar({
+        open: true,
+        message: error?.message || "Erro ao salvar usuário",
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
+
   const generatePDF = () => {
     const doc = new jsPDF();
     doc.text("Test PDF", 14, 20);
@@ -248,6 +292,13 @@ export default function UserPage() {
               }}
             >
               <DataGrid
+                slots={{
+                  noRowsOverlay: () => (
+                    <Box sx={{ padding: 2, textAlign: "center" }}>
+                      Nenhum usuário encontrado.
+                    </Box>
+                  ),
+                }}
                 rows={filteredUsers}
                 columns={columns}
                 getRowId={(row) => row.id}
@@ -310,37 +361,76 @@ export default function UserPage() {
             onClose={() => {
               setOpenForm(false);
               setEditUser(null);
+              form.reset();
             }}
           >
             <DialogTitle>
               {editUser ? "Editar Usuário" : "Criar Usuário"}
             </DialogTitle>
             <DialogContent>
-              <form onSubmit={form.handleSubmit(handleCreateOrUpdate)}>
+              <form
+                autoComplete="off"
+                onSubmit={form.handleSubmit(handleCreateOrUpdate)}
+                style={{ marginTop: "8px" }}
+              >
+                {/* Campo Nome */}
                 <TextField
                   {...form.register("name")}
                   label="Nome"
                   fullWidth
                   margin="normal"
+                  autoComplete="new-password"
+                  error={!!form.formState.errors.name}
+                  helperText={form.formState.errors.name?.message}
+                  inputProps={{
+                    autoComplete: "new-password",
+                  }}
                 />
+
+                {/* Campo Usuário */}
                 <TextField
                   {...form.register("user")}
-                  label="Usuario"
+                  label="Usuário"
                   fullWidth
                   margin="normal"
+                  autoComplete="new-password"
+                  error={!!form.formState.errors.user}
+                  helperText={form.formState.errors.user?.message}
+                  inputProps={{
+                    autoComplete: "new-password",
+                  }}
                 />
+
+                {/* Campo Email */}
                 <TextField
                   {...form.register("email")}
                   label="Email"
                   fullWidth
                   margin="normal"
+                  type="email"
+                  autoComplete="new-password"
+                  error={!!form.formState.errors.email}
+                  helperText={form.formState.errors.email?.message}
+                  inputProps={{
+                    autoComplete: "new-password",
+                  }}
                 />
+
+                {/* Campo CPF */}
                 <TextField
                   {...form.register("document")}
                   label="CPF"
                   fullWidth
                   margin="normal"
+                  autoComplete="new-password"
+                  error={!!form.formState.errors.document}
+                  helperText={form.formState.errors.document?.message}
+                  inputProps={{
+                    autoComplete: "new-password",
+                  }}
                 />
+
+                {/* Campo Senha (apenas para novo usuário) */}
                 {!editUser && (
                   <TextField
                     {...form.register("password")}
@@ -348,15 +438,67 @@ export default function UserPage() {
                     fullWidth
                     margin="normal"
                     type="password"
+                    autoComplete="new-password"
+                    error={!!form.formState.errors.password}
+                    helperText={form.formState.errors.password?.message}
+                    inputProps={{
+                      autoComplete: "new-password",
+                    }}
                   />
                 )}
-                <DialogActions>
-                  <Button onClick={() => setOpenForm(false)}>Cancelar</Button>
-                  <Button type="submit">{editUser ? "Salvar" : "Criar"}</Button>
+
+                <DialogActions sx={{ mt: 2 }}>
+                  <Button
+                    onClick={() => {
+                      setOpenForm(false);
+                      setEditUser(null);
+                      form.reset();
+                    }}
+                    color="secondary"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={
+                      !form.formState.isValid || form.formState.isSubmitting
+                    }
+                  >
+                    {editUser ? "Salvar" : "Criar"}
+                  </Button>
                 </DialogActions>
               </form>
             </DialogContent>
           </Dialog>
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={3000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            anchorOrigin={{
+              vertical: "bottom", // Posiciona na parte inferior
+              horizontal: "right", // Alinha à direita
+            }}
+            sx={{
+              // Ajuste para não sobrepor o menu lateral
+              marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+              "@media (max-width: 600px)": {
+                marginLeft: "0px", // Remove o margin em telas pequenas
+                bottom: "70px", // Evita conflito com mobile navigation
+              },
+            }}
+          >
+            <Alert
+              severity={snackbar.severity}
+              sx={{
+                width: "100%",
+                boxShadow: 3, // Sombra para melhor visibilidade
+                alignItems: "center", // Alinha o ícone e texto verticalmente
+              }}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
         </Container>
       </Layout>
     </Box>

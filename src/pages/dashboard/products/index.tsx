@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { MdDelete, MdEdit } from "react-icons/md";
+import { Snackbar, Alert } from "@mui/material";
 import { PiFilePdf } from "react-icons/pi";
 import {
   Box,
@@ -60,6 +61,11 @@ export default function ProductPage() {
   const [selectedProduct, setSelectedProduct] = useState<ProductProps | null>(
     null
   );
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
 
   const form = useForm<FormData>({
     resolver: yupResolver(ProductResolver),
@@ -70,6 +76,7 @@ export default function ProductPage() {
     setLoading(true);
     try {
       const data = await getProductList();
+      console.log(data);
       setProducts(data);
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
@@ -107,7 +114,6 @@ export default function ProductPage() {
       });
     }
   }, [editProduct, form]);
-
   const handleDelete = async () => {
     if (!deleteId) return;
 
@@ -115,10 +121,21 @@ export default function ProductPage() {
     try {
       await deleteProduct(deleteId.toString());
       setProducts((prev) => prev.filter((product) => product.id !== deleteId));
+
       setDeleteId(null);
       setOpenDialog(false);
+      setSnackbar({
+        open: true,
+        message: "Produto deletado com sucesso!",
+        severity: "success", // Agora com autocomplete
+      });
     } catch (error) {
       console.error("Erro ao deletar o produto:", error);
+      setSnackbar({
+        open: true,
+        message: "Erro ao deletar o produto.",
+        severity: "error", // Tipagem segura
+      });
     } finally {
       setLoading(false);
     }
@@ -126,6 +143,7 @@ export default function ProductPage() {
 
   const handleCreateOrUpdate = async (data: FormData) => {
     setLoading(true);
+
     try {
       const productData: ProductProps = {
         id: editProduct?.id ?? 0,
@@ -141,6 +159,8 @@ export default function ProductPage() {
         updatedAt: new Date().toISOString(),
       };
 
+      let actionMessage = "";
+
       if (editProduct?.id) {
         await patchProduct(productData, editProduct.id);
         setProducts((prev) =>
@@ -150,18 +170,45 @@ export default function ProductPage() {
               : product
           )
         );
+        actionMessage = "Produto atualizado com sucesso!";
       } else {
         const newProduct = await createProduct(productData);
         setProducts((prev) => [...prev, newProduct]);
+        actionMessage = "Produto criado com sucesso!";
       }
 
       setOpenForm(false);
       setEditProduct(null);
+
+      // Feedback visual para o usuário
+      setSnackbar({
+        open: true,
+        message: actionMessage,
+        severity: "success",
+      });
+    } catch (error: unknown) {
+      console.error("Erro na operação de produto:", error);
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro durante a operação";
+
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
   const generatePDF = () => {
+    console.log(
+      "Dados dos produtos para o PDF:",
+      JSON.parse(JSON.stringify(products))
+    );
+
     const doc = new jsPDF();
 
     // Configurações iniciais
@@ -198,13 +245,13 @@ export default function ProductPage() {
         { content: "Valor Semanal", styles: { fontStyle: "bold" } },
         { content: "Valor Mensal", styles: { fontStyle: "bold" } },
         { content: "Data Criação", styles: { fontStyle: "bold" } },
-        { content: "Ativo", styles: { fontStyle: "bold" } },
+        { content: "Status", styles: { fontStyle: "bold" } },
         { content: "", styles: { fontStyle: "bold" } },
       ]);
 
       // Itens de estoque (ou mensagem se não houver)
-      if (product.stocks && product.stocks.length > 0) {
-        product.stocks.forEach((stock) => {
+      if (product.stock && product.stock.length > 0) {
+        product.stock.forEach((stock) => {
           tableData.push([
             stock.numero_patrimonio || "N/A",
             stock.status || "N/A",
@@ -214,7 +261,7 @@ export default function ProductPage() {
             stock.createdAt
               ? new Date(stock.createdAt).toLocaleDateString("pt-BR")
               : "N/A",
-            product.active ? "Sim" : "Não",
+            product.active ? "Disponível" : "Alugado",
             "", // Célula vazia para completar
           ]);
         });
@@ -244,8 +291,8 @@ export default function ProductPage() {
         3: { cellWidth: 25 },
         4: { cellWidth: 25 },
         5: { cellWidth: 25 },
-        6: { cellWidth: 15 },
-        7: { cellWidth: 15 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 10 },
       },
       didDrawPage: (data) => {
         // Rodapé com número de páginas
@@ -578,6 +625,34 @@ export default function ProductPage() {
         product={selectedProduct} // Passando o produto para o modal
         stockData={stockData} // Passando os dados de estoque para o modal
       />
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{
+          vertical: "bottom", // Posiciona na parte inferior
+          horizontal: "right", // Alinha à direita
+        }}
+        sx={{
+          // Ajuste para não sobrepor o menu lateral
+          marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+          "@media (max-width: 600px)": {
+            marginLeft: "0px", // Remove o margin em telas pequenas
+            bottom: "70px", // Evita conflito com mobile navigation
+          },
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3, // Sombra para melhor visibilidade
+            alignItems: "center", // Alinha o ícone e texto verticalmente
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

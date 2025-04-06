@@ -13,5 +13,5 @@ export interface ProductProps {
   createdAt?: string;
   updatedAt?: string;
   role?: number;
-  stocks?: StockProps[];
+  stock?: StockProps[];
 }

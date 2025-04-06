@@ -31,10 +31,7 @@ import {
   TableHead,
   Chip,
   Grid,
-  Snackbar,
-  Alert,
   CircularProgress,
-  AlertColor,
   InputAdornment,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
@@ -46,6 +43,7 @@ import { getLeaseList } from "@services/getLeaseList";
 import { patchLease } from "@services/patchLease";
 import { getClientList } from "@services/getClientList";
 import Layout from "@components/Layout";
+import { Snackbar, Alert } from "@mui/material";
 import { StockProps } from "@interfaces/Stock";
 import { ProductProps } from "@interfaces/Product";
 import { getProductList } from "@services/getProductList";
@@ -168,7 +166,11 @@ export default function LeasePage() {
   const [period, setPeriod] = useState<
     "diario" | "semanal" | "mensal" | "anual"
   >("diario");
-
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
   const form = useForm<FormData>({
     mode: "onChange",
     defaultValues: {
@@ -253,18 +255,46 @@ export default function LeasePage() {
   }, [selectedLease]);
 
   const handleDelete = async () => {
-    if (deleteId) {
-      setLoading(true);
-      try {
-        await deleteLease(deleteId.toString());
-        await fetchLeases();
-      } catch (error) {
-        console.error("Erro ao excluir locação:", error);
-      } finally {
-        setDeleteId(null);
-        setOpenDialog(false);
-        setLoading(false);
-      }
+    if (!deleteId) {
+      setSnackbar({
+        open: true,
+        message: "Nenhuma locação selecionada para exclusão",
+        severity: "warning",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Confirmação adicional para operação crítica
+      const userConfirmed = window.confirm(
+        "Tem certeza que deseja excluir esta locação?"
+      );
+      if (!userConfirmed) return;
+
+      await deleteLease(deleteId.toString());
+      await fetchLeases();
+
+      setSnackbar({
+        open: true,
+        message: "Locação excluída com sucesso!",
+        severity: "success",
+      });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro ao excluir locação";
+
+      console.error("Erro ao excluir locação:", error);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    } finally {
+      setDeleteId(null);
+      setOpenDialog(false);
+      setLoading(false);
     }
   };
 
@@ -457,13 +487,25 @@ export default function LeasePage() {
       setEditLease(null);
       setLeaseItems([]);
       form.reset();
-      showSnackbar("Locação salva com sucesso!", "success");
+
+      // Snackbar de sucesso (inferior direito)
+      setSnackbar({
+        open: true,
+        message: "Locação salva com sucesso!",
+        severity: "success",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
     } catch (error) {
       console.error("Erro ao salvar locação:", error);
-      showSnackbar(
-        error instanceof Error ? error.message : "Erro ao salvar locação",
-        "error"
-      );
+
+      // Snackbar de erro (inferior direito)
+      setSnackbar({
+        open: true,
+        message:
+          error instanceof Error ? error.message : "Erro ao salvar locação",
+        severity: "error",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
     } finally {
       setLoading(false);
     }
@@ -499,21 +541,17 @@ export default function LeasePage() {
     setLeaseParaDevolver(null);
     setDataDevolucao(new Date().toISOString().split("T")[0]);
   };
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success" as AlertColor, // 'success' | 'error' | 'info' | 'warning'
-  });
 
-  const showSnackbar = (message: string, severity: AlertColor) => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
   const handleConfirmarDevolucao = async () => {
-    if (!leaseParaDevolver) return;
+    if (!leaseParaDevolver) {
+      setSnackbar({
+        open: true,
+        message: "Nenhuma locação selecionada para devolução",
+        severity: "warning",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -539,10 +577,25 @@ export default function LeasePage() {
 
       // 4. Fechar modal e limpar estados
       handleCloseDevolucaoModal();
-      showSnackbar("Devolução realizada com sucesso!", "success");
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+      // Snackbar de sucesso (inferior direito)
+      setSnackbar({
+        open: true,
+        message: "Devolução realizada com sucesso!",
+        severity: "success",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
     } catch (error) {
-      showSnackbar("Erro ao realizar devolução", "error");
+      console.error("Erro ao realizar devolução:", error);
+
+      // Snackbar de erro (inferior direito)
+      setSnackbar({
+        open: true,
+        message:
+          error instanceof Error ? error.message : "Erro ao realizar devolução",
+        severity: "error",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
     } finally {
       setLoading(false);
     }
@@ -558,7 +611,15 @@ export default function LeasePage() {
   };
 
   const handleConfirmarCancelamento = async () => {
-    if (!leaseParaCancelar) return;
+    if (!leaseParaCancelar) {
+      setSnackbar({
+        open: true,
+        message: "Nenhuma locação selecionada para cancelamento",
+        severity: "warning",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -572,7 +633,7 @@ export default function LeasePage() {
       // 2. Atualizar o status da locação para "Cancelado"
       await patchLease(
         {
-          id_locacao: leaseParaCancelar.id_locacao, // Include the required field
+          id_locacao: leaseParaCancelar.id_locacao,
           status: "Cancelado",
           data_real_devolucao: new Date().toISOString(),
         },
@@ -583,15 +644,23 @@ export default function LeasePage() {
       await fetchLeases();
 
       // 4. Feedback e fechar modal
-      showSnackbar("Locação cancelada com sucesso!", "success");
+      setSnackbar({
+        open: true,
+        message: "Locação cancelada com sucesso!",
+        severity: "success",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
       handleCloseCancelamentoModal();
     } catch (error) {
-      showSnackbar(
-        `Erro ao cancelar locação: ${
+      console.error("Erro ao cancelar locação:", error);
+      setSnackbar({
+        open: true,
+        message: `Erro ao cancelar locação: ${
           error instanceof Error ? error.message : "Erro desconhecido"
         }`,
-        "error"
-      );
+        severity: "error",
+        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
+      });
     } finally {
       setLoading(false);
     }
@@ -657,7 +726,7 @@ export default function LeasePage() {
     {
       field: "devolucao",
       headerName: "",
-      width: 90,
+      width: 110,
       renderCell: (params) => (
         <Tooltip
           title={
@@ -694,7 +763,7 @@ export default function LeasePage() {
               }}
               startIcon={<TbTruckReturn size={18} />}
             >
-              {/* {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"} */}
+              {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"}
             </Button>
           </span>
         </Tooltip>
@@ -703,7 +772,7 @@ export default function LeasePage() {
     {
       field: "cancelamento",
       headerName: "",
-      width: 90,
+      width: 110,
       renderCell: (params) => (
         <Tooltip
           title={
@@ -1913,21 +1982,35 @@ export default function LeasePage() {
             </Button>
           </DialogActions>
         </Dialog>
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        >
-          <Alert
-            onClose={handleCloseSnackbar}
-            severity={snackbar.severity}
-            sx={{ width: "100%" }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
       </Layout>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{
+          vertical: "bottom", // Posiciona na parte inferior
+          horizontal: "right", // Alinha à direita
+        }}
+        sx={{
+          // Ajuste para não sobrepor o menu lateral
+          marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+          "@media (max-width: 600px)": {
+            marginLeft: "0px", // Remove o margin em telas pequenas
+            bottom: "70px", // Evita conflito com mobile navigation
+          },
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3, // Sombra para melhor visibilidade
+            alignItems: "center", // Alinha o ícone e texto verticalmente
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

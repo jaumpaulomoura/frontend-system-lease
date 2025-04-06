@@ -2,7 +2,8 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { MdDelete, MdEdit } from "react-icons/md";
-// import { PiFilePdf } from "react-icons/pi";
+import { Snackbar, Alert } from "@mui/material";
+import { PiFilePdf } from "react-icons/pi";
 import {
   Box,
   Button,
@@ -24,8 +25,8 @@ import { patchClient } from "@services/patchClient";
 
 import { ClientResolver } from "@utils/resolver";
 import Layout from "@components/Layout";
-// import jsPDF from "jspdf";
-// import autoTable from "jspdf-autotable";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 export type FormData = {
   id?: number;
   name: string;
@@ -34,18 +35,18 @@ export type FormData = {
   email: string;
   rua: string;
   numero: string;
-  complemento?: string;
+  complemento?: string | null;
   bairro: string;
   cidade: string;
   estado: string;
   cep: string;
-  rua_cobranca?: string;
-  numero_cobranca?: string;
-  complemento_cobranca?: string;
-  bairro_cobranca?: string;
-  cidade_cobranca?: string;
-  estado_cobranca?: string;
-  cep_cobranca?: string;
+  rua_cobranca: string;
+  numero_cobranca: string;
+  complemento_cobranca?: string | null;
+  bairro_cobranca: string;
+  cidade_cobranca: string;
+  estado_cobranca: string;
+  cep_cobranca: string;
 };
 
 export default function ClientPage() {
@@ -56,6 +57,11 @@ export default function ClientPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [filterName, setFilterName] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
 
   const form = useForm<FormData>({
     resolver: yupResolver(ClientResolver),
@@ -68,12 +74,23 @@ export default function ClientPage() {
       const data = await getClientList();
       setClients(data);
     } catch (error) {
-      console.error("Erro ao buscar produtos:", error);
+      console.error("Erro ao buscar Clientes:", error);
     } finally {
       setLoading(false);
     }
   }, [setLoading]);
 
+  useEffect(() => {
+    // Patch para suprimir avisos de findDOMNode
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (/findDOMNode/.test(args[0])) return;
+      originalError.apply(console, args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
@@ -131,11 +148,21 @@ export default function ClientPage() {
     try {
       await deleteClient(deleteId.toString());
       setClients((prev) => prev.filter((client) => client.id !== deleteId));
+      setSnackbar({
+        open: true,
+        message: "Cliente deletado com sucesso!",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("Erro ao deletar o cliente:", error);
+      setSnackbar({
+        open: true,
+        message: "Erro ao deletar o cliente.",
+        severity: "error",
+      });
+    } finally {
       setDeleteId(null);
       setOpenDialog(false);
-    } catch (error) {
-      console.error("Erro ao deletar o produto:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -146,8 +173,8 @@ export default function ClientPage() {
       const clientData: ClientProps = {
         id: editClient?.id ?? 0,
         name: data.name,
-        cpf_cnpj: data.cpf_cnpj,
-        telefone: data.telefone,
+        cpf_cnpj: data.cpf_cnpj.replace(/\D/g, ""), // Remove formatação antes de salvar
+        telefone: data.telefone.replace(/\D/g, ""), // Remove formatação
         email: data.email,
         rua: data.rua,
         numero: data.numero,
@@ -155,14 +182,14 @@ export default function ClientPage() {
         bairro: data.bairro,
         cidade: data.cidade,
         estado: data.estado,
-        cep: data.cep,
+        cep: data.cep.replace(/\D/g, ""), // Remove formatação
         rua_cobranca: data.rua_cobranca || "",
         numero_cobranca: data.numero_cobranca || "",
         complemento_cobranca: data.complemento_cobranca || "",
         bairro_cobranca: data.bairro_cobranca || "",
         cidade_cobranca: data.cidade_cobranca || "",
         estado_cobranca: data.estado_cobranca || "",
-        cep_cobranca: data.cep_cobranca || "",
+        cep_cobranca: data.cep_cobranca?.replace(/\D/g, "") || "",
       };
 
       if (editClient?.id) {
@@ -172,31 +199,61 @@ export default function ClientPage() {
             client.id === editClient.id ? { ...client, ...clientData } : client
           )
         );
+        setSnackbar({
+          open: true,
+          message: "Cliente atualizado com sucesso!",
+          severity: "success",
+        });
       } else {
-        console.log(clientData);
         const newClient = await createClient(clientData);
         setClients((prev) => [...prev, newClient]);
+        setSnackbar({
+          open: true,
+          message: "Cliente criado com sucesso!",
+          severity: "success",
+        });
       }
+
+      // Reset completo do formulário após sucesso
+      form.reset({
+        name: "",
+        cpf_cnpj: "",
+        telefone: "",
+        email: "",
+        rua: "",
+        numero: "",
+        complemento: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        rua_cobranca: "",
+        numero_cobranca: "",
+        complemento_cobranca: "",
+        bairro_cobranca: "",
+        cidade_cobranca: "",
+        estado_cobranca: "",
+        cep_cobranca: "",
+      });
 
       setOpenForm(false);
       setEditClient(null);
+    } catch (error) {
+      console.error("Erro ao criar/atualizar cliente:", error);
+      setSnackbar({
+        open: true,
+        message:
+          "Erro ao salvar cliente: " +
+          (error instanceof Error ? error.message : "Erro desconhecido"),
+        severity: "error",
+      });
+
+      // Mantém os dados no formulário em caso de erro
+      form.reset(data);
     } finally {
       setLoading(false);
     }
   };
-
-  // const generatePDF = () => {
-  //   const doc = new jsPDF();
-  //   doc.text("Relatório de Produtos", 14, 20);
-
-  //   autoTable(doc, {
-  //     startY: 30,
-  //     head: [["Name", "Email", "CPF"]],
-  //     body: clients.map(({ id, name, email, cpf_cnpj }) => []),
-  //   });
-
-  //   doc.save("Produtos.pdf");
-  // };
 
   const columns: GridColDef[] = [
     {
@@ -239,109 +296,145 @@ export default function ClientPage() {
       field: "id",
       headerName: "ID",
       width: 100,
-      editable: false, // Não deixa editar
+      // editable: false, // Não deixa editar
     },
     {
       field: "name",
       headerName: "Nome",
       width: 200,
-      editable: true, // Permite editar
     },
     {
       field: "cpf_cnpj",
       headerName: "CPF/CNPJ",
       width: 200,
-      editable: true,
     },
     {
       field: "telefone",
       headerName: "Telefone",
       width: 150,
-      editable: true,
     },
     {
       field: "email",
       headerName: "Email",
       width: 250,
-      editable: true,
     },
     {
       field: "rua",
       headerName: "Rua",
       width: 250,
-      editable: true,
     },
     {
       field: "numero",
       headerName: "Número",
       width: 120,
-      editable: true,
     },
     {
       field: "bairro",
       headerName: "Bairro",
       width: 200,
-      editable: true,
     },
     {
       field: "cidade",
       headerName: "Cidade",
       width: 200,
-      editable: true,
     },
     {
       field: "estado",
       headerName: "Estado",
       width: 150,
-      editable: true,
     },
     {
       field: "cep",
       headerName: "CEP",
       width: 150,
-      editable: true,
     },
     {
       field: "rua_cobranca",
       headerName: "Rua Cobrança",
       width: 250,
-      editable: true,
     },
     {
       field: "numero_cobranca",
       headerName: "Número Cobrança",
       width: 150,
-      editable: true,
     },
     {
       field: "bairro_cobranca",
       headerName: "Bairro Cobrança",
       width: 200,
-      editable: true,
     },
     {
       field: "cidade_cobranca",
       headerName: "Cidade Cobrança",
       width: 200,
-      editable: true,
     },
     {
       field: "estado_cobranca",
       headerName: "Estado Cobrança",
       width: 150,
-      editable: true,
     },
     {
       field: "cep_cobranca",
       headerName: "CEP Cobrança",
       width: 150,
-      editable: true,
     },
   ];
 
   const filteredClients = clients.filter(
     (client) => client.name.toLowerCase().includes(filterName.toLowerCase()) // Marca no filtro
   );
+  const generatePDF = () => {
+    const doc = new jsPDF({ orientation: "landscape" }); // 👈 modo paisagem
+    doc.text("Clientes", 14, 20);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [
+        [
+          "Nome",
+          "CPF/CNPJ",
+          "Telefone",
+          "Email",
+          "Rua",
+          "Número",
+          "Complemento",
+          "Bairro",
+          "Cidade",
+          "Estado",
+          "CEP",
+          "Rua Cobrança",
+          "Número Cobrança",
+          "Complemento Cobrança",
+          "Bairro Cobrança",
+          "Cidade Cobrança",
+          "Estado Cobrança",
+          "CEP Cobrança",
+        ],
+      ],
+      body: clients.map((client) => [
+        client.name,
+        client.cpf_cnpj,
+        client.telefone,
+        client.email,
+        client.rua,
+        client.numero,
+        client.complemento ?? "",
+        client.bairro,
+        client.cidade,
+        client.estado,
+        client.cep,
+        client.rua_cobranca,
+        client.numero_cobranca,
+        client.complemento_cobranca ?? "",
+        client.bairro_cobranca,
+        client.cidade_cobranca,
+        client.estado_cobranca,
+        client.cep_cobranca,
+      ]),
+    });
+
+    doc.save("clientes.pdf");
+  };
 
   return (
     <Box
@@ -393,19 +486,18 @@ export default function ClientPage() {
                 onClick={() => setOpenForm(true)}
                 startIcon={<IoAddCircleOutline />}
               >
-                Adicionar Produto
+                Adicionar Cliente
               </Button>
-              {/* <Button
+              <Button
                 variant="contained"
                 color="secondary"
                 onClick={generatePDF}
                 startIcon={<PiFilePdf />}
               >
                 Gerar PDF
-              </Button> */}
+              </Button>
             </Box>
 
-            {/* DataGrid de Produtos */}
             <Box sx={{ flexGrow: 1, marginTop: "15px" }}>
               <DataGrid
                 rows={filteredClients}
@@ -427,7 +519,7 @@ export default function ClientPage() {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
-          Tem certeza de que deseja excluir este produto?
+          Tem certeza de que deseja excluir este cliente?
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="primary">
@@ -438,10 +530,18 @@ export default function ClientPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Formulário de Adicionar/Editar Produto */}
-      <Dialog open={openForm} onClose={() => setOpenForm(false)}>
+      <Dialog
+        open={openForm}
+        onClose={() => {
+          setOpenForm(false);
+          setEditClient(null); // ainda fecha normalmente
+        }}
+        TransitionProps={{
+          onExited: () => form.reset(), // reset só depois que o modal for totalmente desmontado
+        }}
+      >
         <DialogTitle>
-          {editClient ? "Editar Produto" : "Adicionar Produto"}
+          {editClient ? "Editar Cliente" : "Adicionar Cliente"}
         </DialogTitle>
         <DialogContent>
           <form onSubmit={form.handleSubmit(handleCreateOrUpdate)}>
@@ -455,12 +555,38 @@ export default function ClientPage() {
             />
 
             <TextField
-              {...form.register("cpf_cnpj")}
               label="CPF/CNPJ"
               fullWidth
               margin="normal"
+              value={form.watch("cpf_cnpj")}
+              onChange={(e) => {
+                const rawValue = e.target.value.replace(/\D/g, "");
+
+                // Aplica máscara dinâmica
+                let formattedValue = "";
+                if (rawValue.length <= 11) {
+                  formattedValue = rawValue
+                    .replace(/(\d{3})(\d)/, "$1.$2")
+                    .replace(/(\d{3})(\d)/, "$1.$2")
+                    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+                } else {
+                  formattedValue = rawValue
+                    .replace(/^(\d{2})(\d)/, "$1.$2")
+                    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                    .replace(/(\d{4})(\d)/, "$1-$2")
+                    .substring(0, 18); // Limite máximo para CNPJ
+                }
+
+                form.setValue("cpf_cnpj", formattedValue, {
+                  shouldValidate: true,
+                });
+              }}
               error={!!form.formState.errors.cpf_cnpj}
               helperText={form.formState.errors.cpf_cnpj?.message}
+              inputProps={{
+                maxLength: 18, // 14 dígitos + máscara
+              }}
             />
 
             <TextField
@@ -609,17 +735,51 @@ export default function ClientPage() {
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenForm(false)} color="primary">
+          <Button
+            onClick={() => {
+              setOpenForm(false); // apenas fecha
+              setEditClient(null); // se necessário
+            }}
+            color="primary"
+          >
             Cancelar
           </Button>
           <Button
             onClick={form.handleSubmit(handleCreateOrUpdate)}
             color="primary"
           >
-            {editClient ? "Salvar Alterações" : "Adicionar Produto"}
+            {editClient ? "Salvar Alterações" : "Adicionar Cliente"}
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{
+          vertical: "bottom", // Posiciona na parte inferior
+          horizontal: "right", // Alinha à direita
+        }}
+        sx={{
+          // Ajuste para não sobrepor o menu lateral
+          marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+          "@media (max-width: 600px)": {
+            marginLeft: "0px", // Remove o margin em telas pequenas
+            bottom: "70px", // Evita conflito com mobile navigation
+          },
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3, // Sombra para melhor visibilidade
+            alignItems: "center", // Alinha o ícone e texto verticalmente
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
