@@ -9,7 +9,6 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  Container,
 } from "@mui/material";
 import { BarChart } from "@mui/x-charts/BarChart";
 import Layout from "@components/Layout";
@@ -186,21 +185,33 @@ export default function ProductStockChart() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        backgroundColor: "#E0E0E0",
         display: "flex",
-        flexDirection: "column",
+        justifyContent: "center",
+        width: "100%",
       }}
     >
       <Layout>
-        <Container
-          maxWidth="lg"
+        <Box
           sx={{
-            flex: 1,
-            display: "flex",
+            width: "100%",
+            maxWidth: { xs: "100%", md: "1000px" },
+            mx: "auto",
+            p: 5,
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+            boxShadow: theme.shadows[2],
             backgroundColor: "#E0E0E0",
-            flexDirection: "column",
-            py: 4,
+            position: "relative",
+            // overflow: "hidden",
+            // "&:before": {
+            //   content: '""',
+            //   position: "absolute",
+            //   top: 0,
+            //   left: 0,
+            //   right: 0,
+            //   height: 4,
+            //   background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+            // },
           }}
         >
           <Box
@@ -300,16 +311,14 @@ export default function ProductStockChart() {
                     {
                       dataKey: "available",
                       label: "Disponível",
-                      color: theme.palette.success.main,
-                      // barWidth,
+                      color: "#42a5f5", // azul suave
                       valueFormatter: (value) =>
                         `${value} ${value === 1 ? "item" : "itens"}`,
                     },
                     {
                       dataKey: "rented",
                       label: "Alugado",
-                      color: theme.palette.error.main,
-                      // barWidth,
+                      color: "#ffb300", // amarelo queimado
                       valueFormatter: (value) =>
                         `${value} ${value === 1 ? "item" : "itens"}`,
                     },
@@ -425,7 +434,7 @@ export default function ProductStockChart() {
               </Box>
             </Box>
           </Box>
-        </Container>
+        </Box>
       </Layout>
     </Box>
   );
