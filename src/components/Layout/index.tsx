@@ -14,6 +14,15 @@ import {
   ListItemButton,
   Typography,
   Divider,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  TextField,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import { UserProps } from "@interfaces/User";
 import { getMeData } from "@services/getMeData";
@@ -23,14 +32,23 @@ import { useThemeToggle } from "@theme/ThemeToggleContext";
 import { useTheme } from "@mui/material/styles";
 import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { usePathname } from "next/navigation"; // CORREÇÃO: Agora usa usePathname
+import { getResetPass } from "@services/getResetPass";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { toggleTheme } = useThemeToggle();
   const { signOut, userAuth } = useContext(InitialContext);
   const [user, setUser] = useState<UserProps | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const theme = useTheme();
   const pathname = usePathname();
   console.log("Rota atual:", pathname);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
 
   const getData = async () => {
     try {
@@ -44,7 +62,42 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     getData();
   }, []);
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
 
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      if (!newPassword || !userAuth?.email) {
+        throw new Error("Preencha todos os campos");
+      }
+
+      await getResetPass({
+        email: userAuth.email,
+        password: newPassword,
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Senha alterada com sucesso!",
+        severity: "success",
+      });
+
+      setOpenPasswordDialog(false);
+      setNewPassword("");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error.message || "Erro ao alterar a senha",
+        severity: "error",
+      });
+    }
+  };
   return (
     <Box
       display="flex"
@@ -229,11 +282,67 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 >
                   {user ? user.name : "Carregando..."}
                 </Typography>
-                <Avatar
-                  src="https://bit.ly/tioluwani-kolawole"
-                  alt={user ? user.name : ""}
-                  sx={{ width: 46, height: 46, marginRight: 1 }}
-                />
+                <>
+                  <Avatar
+                    src="https://bit.ly/tioluwani-kolawole"
+                    alt={user ? user.name : ""}
+                    sx={{
+                      width: 46,
+                      height: 46,
+                      marginRight: 1,
+                      cursor: "pointer",
+                    }}
+                    onClick={handleMenuOpen}
+                  />
+
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "right",
+                    }}
+                    transformOrigin={{
+                      vertical: "top",
+                      horizontal: "right",
+                    }}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        setOpenPasswordDialog(true);
+                        handleMenuClose();
+                      }}
+                    >
+                      Redefinir Senha
+                    </MenuItem>
+                  </Menu>
+
+                  <Dialog
+                    open={openPasswordDialog}
+                    onClose={() => setOpenPasswordDialog(false)}
+                  >
+                    <DialogTitle>Redefinir Senha</DialogTitle>
+                    <DialogContent>
+                      <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Nova Senha"
+                        type="password"
+                        fullWidth
+                        variant="standard"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setOpenPasswordDialog(false)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handlePasswordChange}>Salvar</Button>
+                    </DialogActions>
+                  </Dialog>
+                </>
                 <Button
                   onClick={toggleTheme}
                   sx={{
@@ -272,6 +381,34 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{
+          vertical: "bottom", // Posiciona na parte inferior
+          horizontal: "right", // Alinha à direita
+        }}
+        sx={{
+          // Ajuste para não sobrepor o menu lateral
+          marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+          "@media (max-width: 600px)": {
+            marginLeft: "0px", // Remove o margin em telas pequenas
+            bottom: "70px", // Evita conflito com mobile navigation
+          },
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3, // Sombra para melhor visibilidade
+            alignItems: "center", // Alinha o ícone e texto verticalmente
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

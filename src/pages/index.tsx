@@ -1,11 +1,62 @@
 import { useContext, useState } from "react";
-import { Box, Button, Container, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  IconButton,
+  InputAdornment,
+  Snackbar,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { InitialContext } from "@contexts/InitialContext";
 
 export default function LoginPage() {
-  const { signIn } = useContext(InitialContext);
+  const { signIn, loading } = useContext(InitialContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
+
+  const handleLogin = async (event?: React.FormEvent<HTMLFormElement>) => {
+    if (event) event.preventDefault();
+
+    try {
+      await signIn(email, password);
+    } catch (error: unknown) {
+      let errorMessage = "Erro ao fazer login. Verifique suas credenciais.";
+
+      if (
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response &&
+        "data" in error.response &&
+        typeof error.response.data === "object" &&
+        error.response.data &&
+        "message" in error.response.data &&
+        typeof error.response.data.message === "string"
+      ) {
+        errorMessage = error.response.data.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    }
+  };
 
   return (
     <Box
@@ -21,6 +72,7 @@ export default function LoginPage() {
       <Container
         component="form"
         maxWidth="xs"
+        onSubmit={handleLogin}
         sx={{
           padding: 3,
           boxShadow: 3,
@@ -49,23 +101,63 @@ export default function LoginPage() {
           fullWidth
           margin="normal"
           label="Senha"
-          type="password"
+          type={showPassword ? "text" : "password"}
           variant="outlined"
           onChange={(e) => setPassword(e.target.value)}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={() => setShowPassword(!showPassword)}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
         />
         <Button
           fullWidth
           variant="contained"
           color="primary"
           sx={{ marginTop: 2 }}
-          onClick={() => signIn(email, password)}
+          type="submit"
+          disabled={loading}
         >
-          Acessar
+          {loading ? <CircularProgress size={24} color="inherit" /> : "Acessar"}
         </Button>
         <Typography variant="body2" fontWeight={400} textAlign="center" mt={2}>
           Versão: 0.0.1
         </Typography>
       </Container>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        sx={{
+          marginLeft: "240px",
+          "@media (max-width: 600px)": {
+            marginLeft: "0px",
+            bottom: "70px",
+          },
+        }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: 3,
+            alignItems: "center",
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -7,16 +7,18 @@ export default async (req: NextApiRequest, response: NextApiResponse) => {
   const { email, password } = req.body;
 
   try {
-    const res: any = await (() => {
-      return api
-        .post<any>("/auth/login", { email, password })
-        .then((resp) => resp.data);
-    })();
+    const res: any = await api.post<any>("/auth/login", { email, password });
+    const accessToken = res?.data?.accessToken;
 
-    const accessToken = res?.accessToken;
-
-    response.status(200).json({ accessToken });
+    return response.status(200).json({ accessToken });
   } catch (error: any) {
-    return new Response(error);
+    console.error("Erro ao logar:", error?.response?.data || error.message);
+
+    return response.status(500).json({
+      message:
+        error?.response?.data?.message ||
+        error?.message ||
+        "Erro interno no servidor",
+    });
   }
 };

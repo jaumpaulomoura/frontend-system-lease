@@ -119,6 +119,20 @@ export default function ProductPage() {
 
     setLoading(true);
     try {
+      // Verificar se há itens em estoque antes de deletar
+      const stockData = await getStocksSearch(deleteId);
+
+      if (stockData && stockData.length > 0) {
+        setSnackbar({
+          open: true,
+          message:
+            "Não é possível excluir o produto pois existem itens em estoque vinculados a ele.",
+          severity: "error",
+        });
+        setOpenDialog(false);
+        return;
+      }
+
       await deleteProduct(deleteId.toString());
       setProducts((prev) => prev.filter((product) => product.id !== deleteId));
 
@@ -127,14 +141,14 @@ export default function ProductPage() {
       setSnackbar({
         open: true,
         message: "Produto deletado com sucesso!",
-        severity: "success", // Agora com autocomplete
+        severity: "success",
       });
     } catch (error) {
       console.error("Erro ao deletar o produto:", error);
       setSnackbar({
         open: true,
         message: "Erro ao deletar o produto.",
-        severity: "error", // Tipagem segura
+        severity: "error",
       });
     } finally {
       setLoading(false);
@@ -522,6 +536,15 @@ export default function ProductPage() {
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           Tem certeza de que deseja excluir este produto?
+          <br />
+          <br />
+          <br />
+          {deleteId && (
+            <small>
+              Observação: Se houver itens em estoque vinculados a este produto,
+              a exclusão não será permitida.
+            </small>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="primary">

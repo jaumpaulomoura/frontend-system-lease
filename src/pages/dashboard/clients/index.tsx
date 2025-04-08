@@ -27,6 +27,7 @@ import { ClientResolver } from "@utils/resolver";
 import Layout from "@components/Layout";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getLeaseList } from "@services/getLeaseList";
 export type FormData = {
   id?: number;
   name: string;
@@ -140,12 +141,41 @@ export default function ClientPage() {
       });
     }
   }, [editClient, form]);
-
+  const checkClientHasLeases = async (
+    clientId: number
+  ): Promise<{ hasLeases: boolean; leaseCount: number }> => {
+    try {
+      const leases = await getLeaseList(); // Supondo que getLeaseList retorna todas as locações
+      const clientLeases = leases.filter(
+        (lease) => lease.cliente_id === clientId
+      );
+      return {
+        hasLeases: clientLeases.length > 0,
+        leaseCount: clientLeases.length,
+      };
+    } catch (error) {
+      console.error("Erro ao verificar locações:", error);
+      return { hasLeases: true, leaseCount: 0 }; // Assume que tem locações em caso de erro (para segurança)
+    }
+  };
   const handleDelete = async () => {
     if (!deleteId) return;
 
     setLoading(true);
     try {
+      // Verificar se há locações vinculadas ao cliente
+      const { hasLeases, leaseCount } = await checkClientHasLeases(deleteId);
+
+      if (hasLeases) {
+        setSnackbar({
+          open: true,
+          message: `Não é possível excluir. O cliente possui ${leaseCount} locações vinculadas.`,
+          severity: "error",
+        });
+        setOpenDialog(false);
+        return;
+      }
+
       await deleteClient(deleteId.toString());
       setClients((prev) => prev.filter((client) => client.id !== deleteId));
       setSnackbar({
@@ -394,7 +424,7 @@ export default function ClientPage() {
           "Nome",
           "CPF/CNPJ",
           "Telefone",
-          "Email",
+
           "Rua",
           "Número",
           "Complemento",
@@ -402,20 +432,13 @@ export default function ClientPage() {
           "Cidade",
           "Estado",
           "CEP",
-          "Rua Cobrança",
-          "Número Cobrança",
-          "Complemento Cobrança",
-          "Bairro Cobrança",
-          "Cidade Cobrança",
-          "Estado Cobrança",
-          "CEP Cobrança",
         ],
       ],
       body: clients.map((client) => [
         client.name,
         client.cpf_cnpj,
         client.telefone,
-        client.email,
+
         client.rua,
         client.numero,
         client.complemento ?? "",
@@ -423,13 +446,6 @@ export default function ClientPage() {
         client.cidade,
         client.estado,
         client.cep,
-        client.rua_cobranca,
-        client.numero_cobranca,
-        client.complemento_cobranca ?? "",
-        client.bairro_cobranca,
-        client.cidade_cobranca,
-        client.estado_cobranca,
-        client.cep_cobranca,
       ]),
     });
 
@@ -515,11 +531,19 @@ export default function ClientPage() {
           </Box>
         </Container>
       </Layout>
-      {/* Diálogo de Exclusão */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           Tem certeza de que deseja excluir este cliente?
+          <br />
+          <br />
+          <br />
+          {deleteId && (
+            <small>
+              Observação: Se houver locações vinculados a este cliente, a
+              exclusão não será permitida.
+            </small>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="primary">

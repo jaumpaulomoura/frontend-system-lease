@@ -6,15 +6,11 @@ import {
   useEffect,
   useState,
 } from "react";
-// import { useToast } from "@hooks/useToast";
 import { UserProps } from "@interfaces/User";
 import api from "@services/gateway";
 import { getMeData } from "@services/getMeData";
 import { useRouter } from "next/navigation";
 import { destroyCookie, parseCookies, setCookie } from "nookies";
-
-// import Toast from "@components/Toast";
-
 import { Loading } from "../components/Loading";
 
 interface Props {
@@ -25,6 +21,8 @@ interface Props {
   isAutenticated: boolean;
   setIsAutenticated: Dispatch<SetStateAction<boolean>>;
   userAuth: UserProps | null;
+  showLoginSuccess: boolean;
+  setShowLoginSuccess: Dispatch<SetStateAction<boolean>>;
 }
 
 export const InitialContext = createContext({} as Props);
@@ -33,8 +31,8 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [isAutenticated, setIsAutenticated] = useState(false);
   const [userAuth, setUserAuth] = useState<UserProps | null>(null);
+  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
   const router = useRouter();
-  // const toast = useToast();
 
   const getUser = async () => {
     const userLogged = await getMeData();
@@ -59,7 +57,6 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     userInfo();
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -84,21 +81,15 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
         path: "/",
       });
 
-      getUser();
+      await getUser();
 
       setIsAutenticated(true);
+      setShowLoginSuccess(true); // Ativa o alerta de bem-vindo
       setLoading(false);
       router.push("/dashboard");
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      // toast(
-      //   <Toast
-      //     title="Ocorreu um erro!"
-      //     description="Ocorreu um erro inesperado, por favor tente novamente!"
-      //     status="error"
-      //   />
-      // )
       setLoading(false);
+      throw error;
     }
   }
 
@@ -122,10 +113,11 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signOut,
         userAuth,
+        showLoginSuccess,
+        setShowLoginSuccess,
       }}
     >
       {loading && <Loading />}
-
       {children}
     </InitialContext.Provider>
   );

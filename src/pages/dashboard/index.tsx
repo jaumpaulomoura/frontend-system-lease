@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useContext,
+} from "react";
 import {
   Box,
   Typography,
@@ -12,6 +18,12 @@ import {
   Paper,
   Grid,
   Container,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Snackbar,
+  Alert,
+  Button,
 } from "@mui/material";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { Bar } from "react-chartjs-2";
@@ -32,8 +44,9 @@ import { getProductList } from "@services/getProductList";
 import { getLeaseList } from "@services/getLeaseList";
 import { StockProps } from "@interfaces/Stock";
 import { LeaseProps } from "@interfaces/Lease";
+import { InitialContext } from "@contexts/InitialContext";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
 
-// Registra os componentes do Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -49,26 +62,18 @@ interface Product {
   marca: string;
 }
 
-// interface LeaseItem {
-//   valor_negociado_diario: string;
-//   valor_negociado_semanal: string;
-//   valor_negociado_mensal: string;
-//   valor_negociado_anual: string;
-// }
-
-// interface Lease {
-//   id_locacao: number;
-//   data_prevista_devolucao: string;
-//   valor_: string;
-//   leaseItems: LeaseItem[];
-//   status: string;
-// }
-
 interface StockChartData {
   products: string[];
   available: number[];
   rented: number[];
   productIds: number[];
+}
+interface UpcomingReturn {
+  id_locacao: number;
+  clienteName: string;
+  clienteTelefone: string;
+  data_prevista_devolucao: string;
+  status: string;
 }
 
 export default function CombinedChartsPage() {
@@ -86,6 +91,75 @@ export default function CombinedChartsPage() {
     StockChartData,
     "productIds"
   > | null>(null);
+  const [showWelcomeAlert, setShowWelcomeAlert] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const { showLoginSuccess, setShowLoginSuccess } = useContext(InitialContext);
+  const [upcomingLeases, setUpcomingLeases] = useState<UpcomingReturn[]>([]);
+  console.log("upcomingLeases", upcomingLeases);
+
+  const leaseColumns: GridColDef[] = [
+    { field: "id_locacao", headerName: "ID Locação", width: 120 },
+    { field: "clienteName", headerName: "Cliente", width: 180 },
+    { field: "clienteTelefone", headerName: "Telefone", width: 150 },
+    {
+      field: "data_prevista_devolucao",
+      headerName: "Previsão de Devolução",
+      width: 180,
+
+      flex: 1,
+      renderCell: (params) => {
+        const value = params.value;
+        if (!value) return "-";
+
+        const localDate = new Date(value);
+        localDate.setHours(localDate.getHours() + 3); // ajusta UTC -> GMT-3 (Brasil)
+
+        return localDate.toLocaleDateString("pt-BR");
+      },
+    },
+    { field: "status", headerName: "Status", width: 120 },
+  ];
+
+  // Busca e processa locações
+  const fetchAndProcessLeases = useCallback(async () => {
+    try {
+      const allLeases = await getLeaseList();
+      setLeases(allLeases);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const upcoming = allLeases
+        .filter((lease) => {
+          const dueDate = new Date(lease.data_prevista_devolucao);
+          dueDate.setHours(0, 0, 0, 0); // zera horário para comparar apenas a data
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          return (
+            lease.status === "Ativo" && dueDate <= tomorrow // inclui atrasadas, hoje e amanhã
+          );
+        })
+        .map((lease) => ({
+          id_locacao: lease.id_locacao,
+          clienteName: lease.cliente?.name || "",
+          clienteTelefone: lease.cliente?.telefone || "",
+          data_prevista_devolucao: lease.data_prevista_devolucao,
+          status: lease.status,
+        }));
+
+      setUpcomingLeases(upcoming);
+    } catch (error) {
+      console.error("Erro ao buscar locações:", error);
+    }
+  }, []);
 
   // Atualiza largura do container
   useEffect(() => {
@@ -108,14 +182,12 @@ export default function CombinedChartsPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [productsData, stocksData, leasesData] = await Promise.all([
+        const [productsData, stocksData] = await Promise.all([
           getProductList(),
           getStocksList(),
-          getLeaseList(),
         ]);
-        console.log("Dados brutos das locações:", leasesData);
+
         setProducts(productsData);
-        setLeases(leasesData); // Agora usa os dados diretamente sem conversão
 
         // Processar dados de estoque
         const processedStockData = processStockData(stocksData);
@@ -125,6 +197,9 @@ export default function CombinedChartsPage() {
           available: processedStockData.available,
           rented: processedStockData.rented,
         });
+
+        // Busca locações
+        await fetchAndProcessLeases();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -133,40 +208,45 @@ export default function CombinedChartsPage() {
     };
 
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchAndProcessLeases]);
+
+  // Mostra alerta e modal quando vem do login
+  useEffect(() => {
+    if (showLoginSuccess) {
+      setShowWelcomeAlert(true);
+      setShowWelcomeModal(true);
+      setShowLoginSuccess(false);
+
+      const alertTimer = setTimeout(() => setShowWelcomeAlert(false), 6000);
+      const modalTimer = setTimeout(() => setShowWelcomeModal(false), 8000);
+
+      return () => {
+        clearTimeout(alertTimer);
+        clearTimeout(modalTimer);
+      };
+    }
+  }, [showLoginSuccess, setShowLoginSuccess]);
+
   // Processa dados de estoque para o gráfico
   const processStockData = useCallback((stocks: StockProps[]) => {
-    const productMap = stocks.reduce(
-      (
-        acc: Record<
-          number,
-          {
-            name: string;
-            marca: string;
-            available: number;
-            rented: number;
-          }
-        >,
-        stock
-      ) => {
-        if (!acc[stock.id_produto]) {
-          acc[stock.id_produto] = {
-            name: stock.produto.name,
-            marca: stock.produto.marca,
-            available: 0,
-            rented: 0,
-          };
-        }
+    const productMap = stocks.reduce((acc, stock) => {
+      if (!acc[stock.id_produto]) {
+        acc[stock.id_produto] = {
+          name: stock.produto.name,
+          marca: stock.produto.marca,
+          available: 0,
+          rented: 0,
+        };
+      }
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        stock.status === "Disponível"
-          ? acc[stock.id_produto].available++
-          : acc[stock.id_produto].rented++;
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      stock.status === "Disponível"
+        ? acc[stock.id_produto].available++
+        : acc[stock.id_produto].rented++;
 
-        return acc;
-      },
-      {}
-    );
+      return acc;
+    }, {} as Record<number, { name: string; marca: string; available: number; rented: number }>);
 
     const products = Object.values(productMap);
     return {
@@ -207,7 +287,7 @@ export default function CombinedChartsPage() {
   );
 
   // Processa dados para o gráfico de receita
-  const processRevenueData = () => {
+  const processRevenueData = useCallback(() => {
     const monthlyRevenue: Record<string, number> = {};
 
     leases.forEach((lease) => {
@@ -215,8 +295,6 @@ export default function CombinedChartsPage() {
 
       const date = new Date(lease.data_prevista_devolucao);
       const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-
-      // Usa diretamente o valor_total convertido para número
       monthlyRevenue[monthYear] =
         (monthlyRevenue[monthYear] || 0) + Number(lease.valor_total);
     });
@@ -238,7 +316,7 @@ export default function CombinedChartsPage() {
         },
       ],
     };
-  };
+  }, [leases, theme.palette.secondary.main]);
 
   const revenueChartData = processRevenueData();
   const shouldRotateLabels = filteredStockData?.products.length
@@ -249,7 +327,45 @@ export default function CombinedChartsPage() {
       ? 120
       : 80
     : 80;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const upcomingDueLeases = leases
+    .filter((lease) => {
+      const dueDate = new Date(lease.data_prevista_devolucao);
+      dueDate.setHours(0, 0, 0, 0);
+      return (
+        lease.status === "Ativo" &&
+        (dueDate.getTime() === today.getTime() ||
+          dueDate.getTime() === tomorrow.getTime())
+      );
+    })
+    .map((lease) => ({
+      id_locacao: lease.id_locacao,
+      clienteName: lease.cliente?.name || "",
+      clienteTelefone: lease.cliente?.telefone || "",
+      data_prevista_devolucao: lease.data_prevista_devolucao,
+      status: lease.status,
+    }));
+
+  const overdueLeases = leases
+    .filter((lease) => {
+      const dueDate = new Date(lease.data_prevista_devolucao);
+      dueDate.setHours(0, 0, 0, 0);
+      return lease.status === "Ativo" && dueDate.getTime() < today.getTime();
+    })
+    .map((lease) => ({
+      id_locacao: lease.id_locacao,
+      clienteName: lease.cliente?.name || "",
+      clienteTelefone: lease.cliente?.telefone || "",
+      data_prevista_devolucao: lease.data_prevista_devolucao,
+      status: lease.status,
+    }));
+
+  console.log("upcomingDueLeases", upcomingDueLeases);
   return (
     <Box
       sx={{
@@ -261,6 +377,96 @@ export default function CombinedChartsPage() {
     >
       <Layout>
         <Container maxWidth="lg" sx={{ py: 4 }}>
+          {/* Snackbar de boas-vindas */}
+          <Snackbar
+            open={showWelcomeAlert}
+            autoHideDuration={6000}
+            onClose={() => setShowWelcomeAlert(false)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          >
+            <Alert
+              onClose={() => setShowWelcomeAlert(false)}
+              severity="success"
+              sx={{ width: "100%" }}
+            >
+              Login realizado com sucesso! Bem-vindo ao Dashboard!
+            </Alert>
+          </Snackbar>
+
+          {/* Modal de boas-vindas com locações */}
+          <Dialog
+            open={showWelcomeModal}
+            onClose={() => setShowWelcomeModal(false)}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>
+              👋 Bem-vindo ao Sistema - Atenção às Locações
+            </DialogTitle>
+
+            <DialogContent>
+              {overdueLeases.length > 0 && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  ⚠️ Você tem {overdueLeases.length} locação(ões){" "}
+                  <strong>atrasada(s)</strong>!
+                </Alert>
+              )}
+
+              {upcomingDueLeases.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  🕒 Você tem {upcomingDueLeases.length} locação(ões) com
+                  devolução <strong>hoje ou amanhã</strong>!
+                </Alert>
+              )}
+
+              {overdueLeases.length > 0 || upcomingDueLeases.length > 0 ? (
+                <>
+                  <Box sx={{ height: 260, width: "100%", mt: 2 }}>
+                    <DataGrid
+                      rows={[...overdueLeases, ...upcomingDueLeases]}
+                      columns={leaseColumns}
+                      getRowId={(row) => row.id_locacao}
+                      density="compact"
+                      sx={{
+                        "& .row-today": { backgroundColor: "#fff8e1" }, // amarelado
+                        "& .row-overdue": { backgroundColor: "#ffebee" }, // avermelhado
+                      }}
+                      getRowClassName={(params) => {
+                        const dueDate = new Date(
+                          params.row?.data_prevista_devolucao
+                        );
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        dueDate.setHours(0, 0, 0, 0);
+
+                        if (dueDate.getTime() === today.getTime())
+                          return "row-today";
+                        if (dueDate.getTime() < today.getTime())
+                          return "row-overdue";
+                        return "";
+                      }}
+                    />
+                  </Box>
+                </>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhuma locação com devolução iminente. Bom trabalho!
+                </Typography>
+              )}
+
+              <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  variant="contained"
+                  onClick={() => setShowWelcomeModal(false)}
+                >
+                  Entendi
+                </Button>
+              </Box>
+            </DialogContent>
+          </Dialog>
+
+          {/* Conteúdo principal do dashboard */}
           <Grid container spacing={3}>
             {/* Gráfico de Estoque */}
             <Grid item xs={12}>
@@ -278,7 +484,6 @@ export default function CombinedChartsPage() {
                   <Typography variant="h6" fontWeight="600">
                     📊 Estoque por Produto
                   </Typography>
-
                   <FormControl size="small" sx={{ minWidth: 200 }}>
                     <InputLabel>Filtrar por produto</InputLabel>
                     <Select
@@ -334,11 +539,7 @@ export default function CombinedChartsPage() {
                           dataKey: "product",
                           label: "Produtos",
                           tickLabelStyle: shouldRotateLabels
-                            ? {
-                                angle: -45,
-                                textAnchor: "end",
-                                fontSize: 12,
-                              }
+                            ? { angle: -45, textAnchor: "end", fontSize: 12 }
                             : { fontSize: 12 },
                         },
                       ]}
@@ -386,7 +587,6 @@ export default function CombinedChartsPage() {
                 <Typography variant="h6" gutterBottom>
                   💰 Receita Mensal de Locações
                 </Typography>
-
                 {loading ? (
                   <Box display="flex" justifyContent="center" p={4}>
                     <CircularProgress />
@@ -401,18 +601,14 @@ export default function CombinedChartsPage() {
                         plugins: {
                           legend: { display: false },
                           tooltip: {
-                            // Na configuração do seu gráfico:
                             callbacks: {
                               label: function (
                                 this: TooltipModel<"bar">,
                                 tooltipItem: TooltipItem<"bar">
                               ) {
-                                // Verifica se raw existe e é número
-                                if (typeof tooltipItem.raw === "number") {
-                                  return `R$ ${tooltipItem.raw.toFixed(2)}`;
-                                }
-                                // Caso contrário (pode ser string, undefined, etc)
-                                return `R$ 0.00`;
+                                return typeof tooltipItem.raw === "number"
+                                  ? `R$ ${tooltipItem.raw.toFixed(2)}`
+                                  : `R$ 0.00`;
                               },
                             },
                           },

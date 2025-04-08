@@ -8,4 +8,5 @@ export interface UserProps {
   createdAt?: string;
   updatedAt?: string;
   role?: number;
+  token?: string;
 }
