@@ -94,6 +94,7 @@ interface LeaseRequestPayload {
   data_prevista_devolucao: string;
   data_real_devolucao?: string;
   valor_total: number;
+  valor_multa: number;
   status: string;
   observacoes?: string | null;
   leaseItems: Array<{
@@ -122,6 +123,7 @@ export type FormData = {
   data_prevista_devolucao: string | null;
   data_real_devolucao?: string | null;
   valor_total: number;
+  valor_multa: number;
   status: string;
   observacoes?: string | null;
 };
@@ -186,6 +188,7 @@ export default function LeasePage() {
       data_prevista_devolucao: "",
       data_real_devolucao: "",
       valor_total: 0,
+      valor_multa: 0,
       status: "Ativo",
       observacoes: "",
     },
@@ -427,6 +430,7 @@ export default function LeasePage() {
             }, 0)
             .toFixed(2)
         ),
+        valor_multa: 0,
         status: data.status || "Ativo",
         leaseItems: leaseItems.map((item) => {
           const patrimonioId = item.patrimonio?.id || 0;
@@ -686,6 +690,12 @@ export default function LeasePage() {
       width: 120,
       valueFormatter: (params) => formatCurrency(params),
     },
+    {
+      field: "valor_multa",
+      headerName: "Valor Multa",
+      width: 120,
+      valueFormatter: (params) => formatCurrency(params),
+    },
     { field: "status", headerName: "Status", width: 100 },
     // {
     //   field: "actions",
@@ -812,9 +822,11 @@ export default function LeasePage() {
       headerName: "Itens/Patrimônios",
       width: 100,
       renderCell: (params) => {
+        console.log("Conteúdo completo da row:", params.row);
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = useState(false);
         const items = params.row.leaseItems || [];
+        const clientName = params.row.cliente?.name || "Cliente não informado";
 
         return (
           <>
@@ -858,7 +870,7 @@ export default function LeasePage() {
                     />
                   </Box>
                   <Typography variant="subtitle2" sx={{ mt: 1 }}>
-                    Cliente: {params.row.cliente.name}
+                    Cliente: {clientName}
                   </Typography>
                 </DialogTitle>
 
@@ -1146,6 +1158,7 @@ export default function LeasePage() {
       );
       y += 10;
       doc.text(`Valor Total: ${formatCurrency(lease.valor_total)}`, 14, y);
+      doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y);
       y += 15;
 
       // Tabela de itens

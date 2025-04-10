@@ -15,6 +15,7 @@ interface LeaseUpdateData {
   data_prevista_devolucao?: string;
   data_real_devolucao?: string | null;
   valor_total?: number;
+  valor_multa?: number;
   status?: string;
   observacoes?: string | null;
   leaseItems?: Array<{

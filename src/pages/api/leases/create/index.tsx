@@ -28,6 +28,7 @@ interface LeaseRequestBody {
   data_prevista_devolucao: string;
   data_real_devolucao?: string;
   valor_total: number;
+  valor_multa: number;
   status: string;
   observacoes?: string;
   leaseItems: LeaseItem[];
@@ -50,6 +51,10 @@ export default async function handler(
 
   const body: Partial<LeaseRequestBody> = req.body;
 
+  console.log(
+    "📦 Dados recebidos na API de locação:",
+    JSON.stringify(body, null, 2)
+  );
   // Validate required fields
   const requiredFields: (keyof LeaseRequestBody)[] = [
     "cliente_id",
@@ -62,11 +67,14 @@ export default async function handler(
     "data_inicio",
     "data_prevista_devolucao",
     "valor_total",
+    "valor_multa",
     "status",
     "leaseItems",
   ];
 
-  const missingFields = requiredFields.filter((field) => !body[field]);
+  const missingFields = requiredFields.filter(
+    (field) => body[field] === undefined || body[field] === null
+  );
 
   if (missingFields.length > 0) {
     return res.status(400).json({
