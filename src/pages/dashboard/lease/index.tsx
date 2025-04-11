@@ -11,7 +11,7 @@ import { TbTruckReturn } from "react-icons/tb";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import CancelIcon from "@mui/icons-material/Cancel";
-import { MdClear, MdDelete, MdFilterAlt } from "react-icons/md";
+import { MdClear, MdDelete } from "react-icons/md";
 import {
   Box,
   Button,
@@ -1166,34 +1166,123 @@ export default function LeasePage() {
     dateRange,
     selectedProducts,
   ]);
-  const generateLeasesPDF = () => {
+  const generateFilteredLeasesPDF = () => {
     const doc = new jsPDF() as JsPDFWithAutoTable;
 
-    // Configurações iniciais
-    doc.setFontSize(20);
+    // Configuração inicial do documento
+    doc.setProperties({
+      title: `Relatório de Locações - ${new Date().toLocaleDateString(
+        "pt-BR"
+      )}`,
+      subject: "Relatório de locações filtradas",
+      author: "Sistema de Gestão",
+      keywords: "locações, relatório, pdf",
+      creator: "Sistema de Gestão",
+    });
+
+    // Cabeçalho profissional
+    doc.setFontSize(18);
     doc.setTextColor(40);
     doc.text("Relatório de Locações", 105, 15, { align: "center" });
 
-    // Data de emissão
     doc.setFontSize(10);
-    doc.text(`Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, 14, 25);
+    doc.setTextColor(100);
+    doc.text(
+      `Emitido em: ${new Date().toLocaleDateString(
+        "pt-BR"
+      )} às ${new Date().toLocaleTimeString("pt-BR")}`,
+      14,
+      25
+    );
 
-    // Para cada locação
-    leases.forEach((lease, index) => {
+    // Adiciona filtros aplicados
+    let filtersText = "Filtros aplicados: ";
+    const activeFilters = [];
+
+    if (filterIdLocacao) activeFilters.push(`ID: ${filterIdLocacao}`);
+    if (selectedClient) activeFilters.push(`Cliente: ${selectedClient.name}`);
+    if (filterStatus) activeFilters.push(`Status: ${filterStatus}`);
+    if (dateRange.start || dateRange.end) {
+      activeFilters.push(
+        `Período: ${dateRange.start ? formatDate(dateRange.start) : ""} a ${
+          dateRange.end ? formatDate(dateRange.end) : ""
+        }`
+      );
+    }
+    if (selectedProducts.length > 0) {
+      activeFilters.push(
+        `Produtos: ${selectedProducts.map((p) => p.name).join(", ")}`
+      );
+    }
+
+    filtersText +=
+      activeFilters.length > 0
+        ? activeFilters.join(" | ")
+        : "Nenhum filtro aplicado";
+
+    doc.setFontSize(8);
+    doc.text(filtersText, 14, 35, { maxWidth: 180 });
+
+    // Dados resumidos
+    doc.setFontSize(10);
+    doc.text(`Total de locações: ${filteredLeases.length}`, 14, 45);
+    doc.text(
+      `Valor total: ${formatCurrency(
+        filteredLeases.reduce((sum, lease) => sum + lease.valor_total, 0)
+      )}`,
+      14,
+      55
+    );
+
+    // Tabela principal de locações
+    autoTable(doc, {
+      startY: 65,
+      head: [["ID", "Cliente", "Início", "Término", "Valor", "Status"]],
+      body: filteredLeases.map((lease) => [
+        lease.id_locacao,
+        lease.cliente?.name || "Não informado",
+        formatDate(lease.data_inicio),
+        formatDate(lease.data_prevista_devolucao),
+        formatCurrency(lease.valor_total),
+        lease.status,
+      ]),
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        halign: "left",
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 20 },
+      },
+    });
+
+    // Adiciona detalhes de cada locação
+    filteredLeases.forEach((lease, index) => {
       if (index > 0) {
         doc.addPage();
       }
 
-      // Dados da locação
-      doc.setFontSize(14);
-      doc.text(`Locação #${lease.id_locacao}`, 14, 35);
+      let y = 20;
 
-      doc.setFontSize(10);
-      let y = 45;
+      // Cabeçalho da locação
+      doc.setFontSize(14);
+      doc.text(`Locação #${lease.id_locacao}`, 14, y);
+      y += 10;
 
       // Informações básicas
+      doc.setFontSize(10);
       doc.text(`Cliente: ${lease.cliente?.name || "Não informado"}`, 14, y);
-      y += 10;
+      y += 7;
       doc.text(
         `Endereço: ${[
           lease.rua_locacao,
@@ -1208,7 +1297,7 @@ export default function LeasePage() {
         14,
         y
       );
-      y += 10;
+      y += 7;
       doc.text(
         `Período: ${formatDate(lease.data_inicio)} até ${formatDate(
           lease.data_prevista_devolucao
@@ -1216,15 +1305,15 @@ export default function LeasePage() {
         14,
         y
       );
-      y += 10;
+      y += 7;
       doc.text(`Valor Total: ${formatCurrency(lease.valor_total)}`, 14, y);
-      doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y);
-      y += 15;
+      doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y + 7);
+      y += 14;
 
       // Tabela de itens
       doc.setFontSize(12);
       doc.text("Itens Alugados:", 14, y);
-      y += 10;
+      y += 7;
 
       if (lease.leaseItems?.length > 0) {
         autoTable(doc, {
@@ -1249,46 +1338,45 @@ export default function LeasePage() {
               : "-",
           ]),
           headStyles: {
-            fillColor: [41, 128, 185],
+            fillColor: [51, 51, 51],
             textColor: 255,
-            fontStyle: "bold",
           },
           styles: {
-            fontSize: 9,
-            cellPadding: 3,
-            halign: "left",
+            fontSize: 8,
+            cellPadding: 2,
           },
-          margin: { top: y },
         });
-
-        // Atualiza a posição Y usando a mesma instância do doc
-        y = doc.lastAutoTable.finalY + 10;
+        y = doc.lastAutoTable.finalY + 5;
       } else {
         doc.text("Nenhum item registrado", 20, y);
-        y += 10;
+        y += 7;
       }
 
-      // Status e observações
-      doc.text(`Status: ${lease.status || "Não informado"}`, 14, y);
-      y += 10;
+      // Observações
       if (lease.observacoes) {
         doc.text(`Observações: ${lease.observacoes}`, 14, y);
       }
     });
 
-    // Rodapé com número de páginas
+    // Rodapé em todas as páginas
     const pageCount = doc.internal.pages.length;
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
+      doc.setTextColor(150);
       doc.text(
         `Página ${i} de ${pageCount}`,
         doc.internal.pageSize.width - 30,
         doc.internal.pageSize.height - 10
       );
+      doc.text(
+        `Sistema de Gestão - ${new Date().getFullYear()}`,
+        14,
+        doc.internal.pageSize.height - 10
+      );
     }
 
-    doc.save(`locacoes_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`relatorio_locacoes_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   // Funções auxiliares (adicionar ao componente)
@@ -1321,51 +1409,21 @@ export default function LeasePage() {
   return (
     <Box sx={{ height: "100vh", backgroundColor: "#E0E0E0" }}>
       <Layout>
-        <Container maxWidth="lg" sx={{ pt: 8, height: "calc(100vh - 64px)" }}>
+        <Container sx={{ width: "84vw", pt: 8, height: "calc(100vh - 34px)" }}>
           <Box
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             <Box sx={{ mb: 3 }}>
               {/* Cabeçalho com título e botões */}
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 2,
-                }}
-              >
-                <Typography variant="h4">Gestão de Locações</Typography>
-
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    onClick={() => {
-                      setEditLease(null);
-                      setOpenForm(true);
-                    }}
-                    startIcon={<IoAddCircleOutline />}
-                  >
-                    Nova Locação
-                  </Button>
-                  <Button
-                    variant="contained"
-                    onClick={generateLeasesPDF}
-                    startIcon={<PiFilePdf />}
-                  >
-                    Gerar PDF
-                  </Button>
-                </Box>
-              </Box>
 
               {/* Filtros simplificados */}
               {/* <Paper elevation={2} sx={{ p: 3, backgroundColor: "#f9f9f9" }}> */}
-              <Box display="flex" alignItems="center" mb={2}>
+              {/* <Box display="flex" alignItems="center" mb={2}>
                 <MdFilterAlt size={20} style={{ marginRight: 8 }} />
                 <Typography variant="h6">Filtros</Typography>
-              </Box>
+              </Box> */}
 
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mt: 1, mb: 3 }}>
                 <Box
                   sx={{
                     display: "flex",
@@ -1376,9 +1434,9 @@ export default function LeasePage() {
                 >
                   {/* Filtro por ID */}
                   <TextField
-                    label="ID"
+                    label="Nº Locação"
                     size="small"
-                    sx={{ width: 90 }}
+                    sx={{ width: 120 }}
                     value={filterIdLocacao}
                     onChange={(e) => setFilterIdLocacao(e.target.value)}
                   />
@@ -1471,7 +1529,34 @@ export default function LeasePage() {
                   </Button>
                 </Box>
               </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  // mb: 1,
+                }}
+              >
+                {/* <Typography variant="h4">Gestão de Locações</Typography> */}
 
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setEditLease(null);
+                    setOpenForm(true);
+                  }}
+                  startIcon={<IoAddCircleOutline />}
+                >
+                  Nova Locação
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={generateFilteredLeasesPDF}
+                  startIcon={<PiFilePdf />}
+                >
+                  Gerar PDF
+                </Button>
+              </Box>
               {/* Contador de resultados */}
               {/* </Paper> */}
             </Box>
@@ -1541,197 +1626,6 @@ export default function LeasePage() {
               </DialogTitle>
               <DialogContent dividers>
                 <Box sx={{ display: "flex", height: "70vh" }}>
-                  <Box
-                    sx={{
-                      height: "70vh",
-                      width: "70vw",
-                      pr: 2,
-                      overflowY: "auto",
-                      borderRight: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Autocomplete
-                      options={clients}
-                      getOptionLabel={(option) =>
-                        `${option.id} - ${option.name}`
-                      }
-                      value={
-                        clients.find(
-                          (c) => c.id === form.watch("cliente_id")
-                        ) || null
-                      }
-                      onChange={(_, newValue) =>
-                        form.setValue("cliente_id", newValue?.id || 0)
-                      }
-                      renderInput={(params) => (
-                        <TextField {...params} label="Cliente" required />
-                      )}
-                      isOptionEqualToValue={(option, value) =>
-                        option.id === value.id
-                      }
-                    />
-
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 2,
-                        mt: 2,
-                      }}
-                    >
-                      <TextField
-                        {...form.register("rua_locacao")}
-                        label="Rua"
-                        size="small"
-                        required
-                      />
-                      <TextField
-                        {...form.register("numero_locacao")}
-                        label="Número"
-                        size="small"
-                        required
-                      />
-                    </Box>
-
-                    <TextField
-                      {...form.register("complemento_locacao")}
-                      label="Complemento"
-                      size="small"
-                      fullWidth
-                      sx={{ mt: 2 }}
-                    />
-
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 2,
-                        mt: 2,
-                      }}
-                    >
-                      <TextField
-                        {...form.register("bairro_locacao")}
-                        label="Bairro"
-                        size="small"
-                        required
-                      />
-                      <TextField
-                        {...form.register("cidade_locacao")}
-                        label="Cidade"
-                        size="small"
-                        required
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 2,
-                        mt: 2,
-                      }}
-                    >
-                      <TextField
-                        {...form.register("estado_locacao")}
-                        label="Estado"
-                        size="small"
-                        required
-                      />
-                      <TextField
-                        {...form.register("cep_locacao")}
-                        label="CEP"
-                        size="small"
-                        required
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1fr",
-                        gap: 2,
-                        mt: 2,
-                      }}
-                    >
-                      <TextField
-                        {...form.register("data_inicio")}
-                        label="Data Início"
-                        type="date"
-                        size="small"
-                        InputLabelProps={{ shrink: true }}
-                        required
-                      />
-                      <TextField
-                        {...form.register("data_prevista_devolucao")}
-                        label="Previsão Devolução"
-                        type="date"
-                        size="small"
-                        InputLabelProps={{ shrink: true }}
-                        required
-                      />
-                      <TextField
-                        {...form.register("data_real_devolucao")}
-                        label="Devolução Real"
-                        type="date"
-                        size="small"
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 2,
-                        mt: 2,
-                      }}
-                    >
-                      <TextField
-                        {...form.register("valor_total")}
-                        label="Valor Total"
-                        value={leaseItems
-                          .reduce((total, item) => {
-                            return (
-                              total +
-                              (item.periodo === "diario"
-                                ? Number(item.valor_negociado_diario)
-                                : item.periodo === "semanal"
-                                ? Number(item.valor_negociado_semanal)
-                                : Number(item.valor_negociado_mensal))
-                            );
-                          }, 0)
-                          .toFixed(2)}
-                        InputProps={{
-                          readOnly: true,
-                          startAdornment: (
-                            <InputAdornment position="start">R$</InputAdornment>
-                          ),
-                        }}
-                      />
-                      <TextField
-                        {...form.register("status")}
-                        label="Status"
-                        select
-                        size="small"
-                        required
-                      >
-                        <MenuItem value="Ativo">Ativo</MenuItem>
-                        <MenuItem value="Finalizado">Finalizado</MenuItem>
-                        <MenuItem value="Cancelado">Cancelado</MenuItem>
-                      </TextField>
-                    </Box>
-
-                    <TextField
-                      {...form.register("observacoes")}
-                      label="Observações"
-                      size="small"
-                      multiline
-                      rows={2}
-                      fullWidth
-                      sx={{ mt: 2 }}
-                    />
-                  </Box>
-
                   <Box sx={{ width: "50%", pl: 2, overflowY: "auto" }}>
                     <Typography variant="h6" sx={{ mb: 2 }}>
                       Produtos da Locação
@@ -2047,6 +1941,196 @@ export default function LeasePage() {
                         </Typography>
                       )}
                     </Box>
+                  </Box>
+                  <Box
+                    sx={{
+                      height: "70vh",
+                      width: "70vw",
+                      pr: 2,
+                      overflowY: "auto",
+                      borderRight: "1px solid #e0e0e0",
+                    }}
+                  >
+                    <Autocomplete
+                      options={clients}
+                      getOptionLabel={(option) =>
+                        `${option.id} - ${option.name}`
+                      }
+                      value={
+                        clients.find(
+                          (c) => c.id === form.watch("cliente_id")
+                        ) || null
+                      }
+                      onChange={(_, newValue) =>
+                        form.setValue("cliente_id", newValue?.id || 0)
+                      }
+                      renderInput={(params) => (
+                        <TextField {...params} label="Cliente" required />
+                      )}
+                      isOptionEqualToValue={(option, value) =>
+                        option.id === value.id
+                      }
+                    />
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 2,
+                        mt: 2,
+                      }}
+                    >
+                      <TextField
+                        {...form.register("rua_locacao")}
+                        label="Rua"
+                        size="small"
+                        required
+                      />
+                      <TextField
+                        {...form.register("numero_locacao")}
+                        label="Número"
+                        size="small"
+                        required
+                      />
+                    </Box>
+
+                    <TextField
+                      {...form.register("complemento_locacao")}
+                      label="Complemento"
+                      size="small"
+                      fullWidth
+                      sx={{ mt: 2 }}
+                    />
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 2,
+                        mt: 2,
+                      }}
+                    >
+                      <TextField
+                        {...form.register("bairro_locacao")}
+                        label="Bairro"
+                        size="small"
+                        required
+                      />
+                      <TextField
+                        {...form.register("cidade_locacao")}
+                        label="Cidade"
+                        size="small"
+                        required
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 2,
+                        mt: 2,
+                      }}
+                    >
+                      <TextField
+                        {...form.register("estado_locacao")}
+                        label="Estado"
+                        size="small"
+                        required
+                      />
+                      <TextField
+                        {...form.register("cep_locacao")}
+                        label="CEP"
+                        size="small"
+                        required
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr",
+                        gap: 2,
+                        mt: 2,
+                      }}
+                    >
+                      <TextField
+                        {...form.register("data_inicio")}
+                        label="Data Início"
+                        type="date"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        required
+                      />
+                      <TextField
+                        {...form.register("data_prevista_devolucao")}
+                        label="Previsão Devolução"
+                        type="date"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        required
+                      />
+                      <TextField
+                        {...form.register("data_real_devolucao")}
+                        label="Devolução Real"
+                        type="date"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 2,
+                        mt: 2,
+                      }}
+                    >
+                      <TextField
+                        {...form.register("valor_total")}
+                        label="Valor Total"
+                        value={leaseItems
+                          .reduce((total, item) => {
+                            return (
+                              total +
+                              (item.periodo === "diario"
+                                ? Number(item.valor_negociado_diario)
+                                : item.periodo === "semanal"
+                                ? Number(item.valor_negociado_semanal)
+                                : Number(item.valor_negociado_mensal))
+                            );
+                          }, 0)
+                          .toFixed(2)}
+                        InputProps={{
+                          readOnly: true,
+                          startAdornment: (
+                            <InputAdornment position="start">R$</InputAdornment>
+                          ),
+                        }}
+                      />
+                      <TextField
+                        {...form.register("status")}
+                        label="Status"
+                        select
+                        size="small"
+                        required
+                      >
+                        <MenuItem value="Ativo">Ativo</MenuItem>
+                        <MenuItem value="Finalizado">Finalizado</MenuItem>
+                        <MenuItem value="Cancelado">Cancelado</MenuItem>
+                      </TextField>
+                    </Box>
+
+                    <TextField
+                      {...form.register("observacoes")}
+                      label="Observações"
+                      size="small"
+                      multiline
+                      rows={2}
+                      fullWidth
+                      sx={{ mt: 2 }}
+                    />
                   </Box>
                 </Box>
               </DialogContent>
