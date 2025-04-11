@@ -1,11 +1,17 @@
 // "use client";
 
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { TbTruckReturn } from "react-icons/tb";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import CancelIcon from "@mui/icons-material/Cancel";
-import { MdDelete } from "react-icons/md";
+import { MdClear, MdDelete, MdFilterAlt } from "react-icons/md";
 import {
   Box,
   Button,
@@ -33,6 +39,7 @@ import {
   Grid,
   CircularProgress,
   InputAdornment,
+  // Paper,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { InitialContext } from "@contexts/InitialContext";
@@ -164,6 +171,13 @@ export default function LeasePage() {
   const [leaseParaCancelar, setLeaseParaCancelar] = useState<LeaseProps | null>(
     null
   );
+  const [valorMulta, setValorMulta] = useState<number>(0);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: "",
+    end: "",
+  });
+  const [selectedProducts, setSelectedProducts] = useState<ProductProps[]>([]);
 
   const [period, setPeriod] = useState<
     "diario" | "semanal" | "mensal" | "anual"
@@ -544,6 +558,7 @@ export default function LeasePage() {
     setDevolucaoModalOpen(false);
     setLeaseParaDevolver(null);
     setDataDevolucao(new Date().toISOString().split("T")[0]);
+    setValorMulta(0);
   };
 
   const handleConfirmarDevolucao = async () => {
@@ -571,6 +586,7 @@ export default function LeasePage() {
         {
           id_locacao: leaseParaDevolver.id_locacao,
           data_real_devolucao: new Date(dataDevolucao).toISOString(),
+          valor_multa: valorMulta,
           status: "Finalizado",
         },
         leaseParaDevolver.id_locacao
@@ -581,6 +597,7 @@ export default function LeasePage() {
 
       // 4. Fechar modal e limpar estados
       handleCloseDevolucaoModal();
+      setValorMulta(0);
 
       // Snackbar de sucesso (inferior direito)
       setSnackbar({
@@ -1097,15 +1114,58 @@ export default function LeasePage() {
     },
   ];
 
-  const filteredLeases = leases.filter((lease) => {
-    const matchesClient = selectedClient
-      ? lease.cliente_id === selectedClient.id
-      : true;
-    const matchesLocacao = lease.id_locacao
-      .toString()
-      .includes(filterIdLocacao);
-    return matchesClient && matchesLocacao;
-  });
+  const filteredLeases = useMemo(() => {
+    return leases.filter((lease) => {
+      // Filtro por ID
+      const matchesId = filterIdLocacao
+        ? lease.id_locacao.toString().includes(filterIdLocacao)
+        : true;
+
+      // Filtro por cliente
+      const matchesClient = selectedClient
+        ? lease.cliente_id === selectedClient.id
+        : true;
+
+      // Filtro por status
+      const matchesStatus = filterStatus ? lease.status === filterStatus : true;
+
+      // Filtro por data
+      const leaseDate = new Date(lease.data_inicio);
+      const matchesDateStart = dateRange.start
+        ? leaseDate >= new Date(dateRange.start)
+        : true;
+      const matchesDateEnd = dateRange.end
+        ? leaseDate <= new Date(dateRange.end)
+        : true;
+
+      // Filtro por produtos (E/OU lógico)
+      // Filtro por produtos (mantendo apenas a lógica OR)
+      const matchesProducts =
+        selectedProducts.length > 0
+          ? lease.leaseItems?.some((item) =>
+              selectedProducts.some(
+                (prod) => item.patrimonio?.produto?.id === prod.id
+              )
+            )
+          : true;
+
+      return (
+        matchesId &&
+        matchesClient &&
+        matchesStatus &&
+        matchesDateStart &&
+        matchesDateEnd &&
+        matchesProducts
+      );
+    });
+  }, [
+    leases,
+    filterIdLocacao,
+    selectedClient,
+    filterStatus,
+    dateRange,
+    selectedProducts,
+  ]);
   const generateLeasesPDF = () => {
     const doc = new jsPDF() as JsPDFWithAutoTable;
 
@@ -1250,6 +1310,14 @@ export default function LeasePage() {
       return "-";
     }
   };
+  const clearAllFilters = () => {
+    setFilterIdLocacao("");
+    setSelectedClient(null);
+    setFilterStatus("");
+    setDateRange({ start: "", end: "" });
+    setSelectedProducts([]);
+  };
+
   return (
     <Box sx={{ height: "100vh", backgroundColor: "#E0E0E0" }}>
       <Layout>
@@ -1257,57 +1325,155 @@ export default function LeasePage() {
           <Box
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
-            <Typography variant="h4" sx={{ mb: 3 }}>
-              Gestão de Locações
-            </Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                mb: 2,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <TextField
-                label="Filtrar por ID Locação"
-                value={filterIdLocacao}
-                onChange={(e) => setFilterIdLocacao(e.target.value)}
-                size="small"
-                sx={{ width: 200 }}
-              />
-
-              <Autocomplete
-                options={clients}
-                getOptionLabel={(option) => `${option.id} - ${option.name}`}
-                value={selectedClient}
-                onChange={(_, newValue) => setSelectedClient(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Filtrar por Cliente"
-                    size="small"
-                    sx={{ width: 300 }}
-                  />
-                )}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-              />
-
-              <Box sx={{ flexGrow: 1 }} />
-              <Button
-                variant="contained"
-                onClick={() => {
-                  setEditLease(null);
-                  setOpenForm(true);
+            <Box sx={{ mb: 3 }}>
+              {/* Cabeçalho com título e botões */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
                 }}
-                startIcon={<IoAddCircleOutline />}
               >
-                Nova Locação
-              </Button>
-              <Button variant="contained" onClick={generateLeasesPDF}>
-                Gerar PDF <PiFilePdf style={{ marginLeft: 8 }} />
-              </Button>
+                <Typography variant="h4">Gestão de Locações</Typography>
+
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      setEditLease(null);
+                      setOpenForm(true);
+                    }}
+                    startIcon={<IoAddCircleOutline />}
+                  >
+                    Nova Locação
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={generateLeasesPDF}
+                    startIcon={<PiFilePdf />}
+                  >
+                    Gerar PDF
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Filtros simplificados */}
+              {/* <Paper elevation={2} sx={{ p: 3, backgroundColor: "#f9f9f9" }}> */}
+              <Box display="flex" alignItems="center" mb={2}>
+                <MdFilterAlt size={20} style={{ marginRight: 8 }} />
+                <Typography variant="h6">Filtros</Typography>
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1.5,
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Filtro por ID */}
+                  <TextField
+                    label="ID"
+                    size="small"
+                    sx={{ width: 90 }}
+                    value={filterIdLocacao}
+                    onChange={(e) => setFilterIdLocacao(e.target.value)}
+                  />
+
+                  {/* Filtro por Cliente */}
+                  <Autocomplete
+                    options={clients}
+                    getOptionLabel={(option) => `${option.id} - ${option.name}`}
+                    value={selectedClient}
+                    onChange={(_, newValue) => setSelectedClient(newValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Cliente"
+                        size="small"
+                        sx={{ width: 180 }}
+                      />
+                    )}
+                    isOptionEqualToValue={(option, value) =>
+                      option.id === value.id
+                    }
+                    size="small"
+                  />
+
+                  {/* Filtro por Status */}
+                  <TextField
+                    select
+                    label="Status"
+                    size="small"
+                    sx={{ width: 120 }}
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    <MenuItem value="Ativo">Ativo</MenuItem>
+                    <MenuItem value="Finalizado">Finalizado</MenuItem>
+                  </TextField>
+
+                  {/* Filtro por Data */}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <TextField
+                      label="Início"
+                      type="date"
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 135 }}
+                      value={dateRange.start}
+                      onChange={(e) =>
+                        setDateRange({
+                          ...dateRange,
+                          start: e.target.value,
+                        })
+                      }
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      a
+                    </Typography>
+                    <TextField
+                      label="Fim"
+                      type="date"
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 135 }}
+                      value={dateRange.end}
+                      onChange={(e) =>
+                        setDateRange({ ...dateRange, end: e.target.value })
+                      }
+                    />
+                  </Box>
+
+                  {/* Botão Limpar */}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<MdClear />}
+                    onClick={clearAllFilters}
+                    disabled={
+                      !filterIdLocacao &&
+                      !selectedClient &&
+                      !filterStatus &&
+                      !dateRange.start &&
+                      !dateRange.end
+                    }
+                    sx={{ height: 40 }}
+                  >
+                    Limpar
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Contador de resultados */}
+              {/* </Paper> */}
             </Box>
 
             <Box sx={{ flex: 1, minHeight: 0 }}>
@@ -1906,7 +2072,7 @@ export default function LeasePage() {
                 onClick={form.handleSubmit(handleCreateOrUpdate)}
                 color="primary"
               >
-                {editLease ? "Salvar Alterações" : "Adicionar Produto"}
+                {editLease ? "Salvar Alterações" : "Adicionar Locação"}
               </Button>
             </DialogActions>
           </Dialog>
@@ -1915,14 +2081,32 @@ export default function LeasePage() {
           <DialogTitle>Registrar Devolução</DialogTitle>
           <DialogContent>
             <Box sx={{ mt: 2 }}>
-              <TextField
-                label="Data Real de Devolução"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={dataDevolucao}
-                onChange={(e) => setDataDevolucao(e.target.value)}
-              />
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Data Real de Devolução"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={dataDevolucao}
+                    onChange={(e) => setDataDevolucao(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Valor da Multa (R$)"
+                    type="number"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">R$</InputAdornment>
+                      ),
+                    }}
+                    value={valorMulta}
+                    onChange={(e) => setValorMulta(Number(e.target.value))}
+                  />
+                </Grid>
+              </Grid>
 
               {leaseParaDevolver && (
                 <Box sx={{ mt: 2 }}>
