@@ -552,7 +552,7 @@ export default function ProductPage() {
             </Box>
 
             {/* DataGrid de Produtos */}
-            <Box sx={{ flexGrow: 1, marginTop: "15px" }}>
+            <Box sx={{ flexGrow: 1, marginTop: "10px" }}>
               <DataGrid
                 rows={filteredProducts}
                 columns={columns}
@@ -560,10 +560,10 @@ export default function ProductPage() {
                 autoHeight={false}
                 initialState={{
                   pagination: {
-                    paginationModel: { pageSize: 6 },
+                    paginationModel: { pageSize: 5 },
                   },
                 }}
-                pageSizeOptions={[6, 10, 25]}
+                pageSizeOptions={[5, 10, 25]}
               />
             </Box>
           </Box>

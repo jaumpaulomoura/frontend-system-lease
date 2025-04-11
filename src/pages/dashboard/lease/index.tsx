@@ -1568,7 +1568,7 @@ export default function LeasePage() {
                 getRowId={(row) => row.id_locacao}
                 disableRowSelectionOnClick
                 initialState={{
-                  pagination: { paginationModel: { pageSize: 10 } },
+                  pagination: { paginationModel: { pageSize: 5 } },
                 }}
                 pageSizeOptions={[5, 10, 25]}
                 sx={{
