@@ -58,6 +58,9 @@ export default function ClientPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [filterName, setFilterName] = useState("");
+  const [filterId, setFilterId] = useState("");
+  const [filterCpfCnpj, setFilterCpfCnpj] = useState("");
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -284,6 +287,23 @@ export default function ClientPage() {
       setLoading(false);
     }
   };
+  const formatCpfCnpj = (value: string) => {
+    const rawValue = value.replace(/\D/g, "");
+
+    if (rawValue.length <= 11) {
+      return rawValue
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } else {
+      return rawValue
+        .replace(/^(\d{2})(\d)/, "$1.$2")
+        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2")
+        .replace(/(\d{4})(\d)/, "$1-$2")
+        .substring(0, 18);
+    }
+  };
 
   const columns: GridColDef[] = [
     {
@@ -337,7 +357,9 @@ export default function ClientPage() {
       field: "cpf_cnpj",
       headerName: "CPF/CNPJ",
       width: 200,
+      valueFormatter: (params) => formatCpfCnpj(params),
     },
+
     {
       field: "telefone",
       headerName: "Telefone",
@@ -409,10 +431,18 @@ export default function ClientPage() {
       width: 150,
     },
   ];
+  const filteredClients = clients.filter((client) => {
+    return (
+      (!filterId || client.id.toString().includes(filterId)) &&
+      (!filterName ||
+        client.name.toLowerCase().includes(filterName.toLowerCase())) &&
+      (!filterCpfCnpj ||
+        client.cpf_cnpj
+          .replace(/\D/g, "")
+          .includes(filterCpfCnpj.replace(/\D/g, "")))
+    );
+  });
 
-  const filteredClients = clients.filter(
-    (client) => client.name.toLowerCase().includes(filterName.toLowerCase()) // Marca no filtro
-  );
   const generatePDF = () => {
     const doc = new jsPDF({ orientation: "landscape" }); // 👈 modo paisagem
     doc.text("Clientes", 14, 20);
@@ -475,16 +505,51 @@ export default function ClientPage() {
             <Box
               sx={{
                 display: "flex",
+                paddingTop: "84px",
                 justifyContent: "flex-start",
                 gap: 1,
                 marginTop: "5px",
               }}
             >
               <TextField
-                label="Filtrar por Marca"
-                variant="outlined" // Alterado de "Nome" para "Marca"
+                label="Filtrar por ID"
+                variant="outlined"
+                value={filterId}
+                onChange={(e) => setFilterId(e.target.value)}
+              />
+              <TextField
+                label="Filtrar por Nome"
+                variant="outlined"
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
+              />
+              <TextField
+                label="Filtrar por CPF/CNPJ"
+                variant="outlined"
+                value={filterCpfCnpj}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, "");
+
+                  let formattedValue = "";
+                  if (rawValue.length <= 11) {
+                    formattedValue = rawValue
+                      .replace(/(\d{3})(\d)/, "$1.$2")
+                      .replace(/(\d{3})(\d)/, "$1.$2")
+                      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+                  } else {
+                    formattedValue = rawValue
+                      .replace(/^(\d{2})(\d)/, "$1.$2")
+                      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                      .replace(/(\d{4})(\d)/, "$1-$2")
+                      .substring(0, 18);
+                  }
+
+                  setFilterCpfCnpj(formattedValue);
+                }}
+                inputProps={{
+                  maxLength: 18,
+                }}
               />
             </Box>
 
@@ -522,10 +587,10 @@ export default function ClientPage() {
                 autoHeight={false}
                 initialState={{
                   pagination: {
-                    paginationModel: { pageSize: 10 },
+                    paginationModel: { pageSize: 6 },
                   },
                 }}
-                pageSizeOptions={[5, 10, 25]}
+                pageSizeOptions={[6, 10, 25]}
               />
             </Box>
           </Box>

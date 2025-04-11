@@ -1409,11 +1409,11 @@ export default function LeasePage() {
   return (
     <Box sx={{ height: "100vh", backgroundColor: "#E0E0E0" }}>
       <Layout>
-        <Container sx={{ width: "84vw", pt: 8, height: "calc(100vh - 34px)" }}>
+        <Container sx={{ width: "85vw", pt: 8, height: "calc(100vh - 34px)" }}>
           <Box
             sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ paddingTop: "14px", mb: 3 }}>
               {/* Cabeçalho com título e botões */}
 
               {/* Filtros simplificados */}

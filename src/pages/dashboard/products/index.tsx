@@ -2,7 +2,14 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { MdDelete, MdEdit } from "react-icons/md";
-import { Snackbar, Alert } from "@mui/material";
+import {
+  Snackbar,
+  Alert,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
 import { PiFilePdf } from "react-icons/pi";
 import {
   Box,
@@ -56,6 +63,9 @@ export default function ProductPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [filterName, setFilterName] = useState("");
+  const [filterMarca, setFilterMarca] = useState("");
+
+  const [filterActive, setFilterActive] = useState<boolean | "all">("all");
   const [openPatrimonyModal, setOpenPatrimonyModal] = useState(false);
   const [stockData, setStockData] = useState<StockProps[] | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductProps | null>(
@@ -220,7 +230,7 @@ export default function ProductPage() {
   const generatePDF = () => {
     console.log(
       "Dados dos produtos para o PDF:",
-      JSON.parse(JSON.stringify(products))
+      JSON.parse(JSON.stringify(filteredProducts))
     );
 
     const doc = new jsPDF();
@@ -237,7 +247,7 @@ export default function ProductPage() {
     // Preparar os dados para a tabela
     const tableData: TableRow[] = [];
 
-    products.forEach((product) => {
+    filteredProducts.forEach((product) => {
       // Linha do produto (mesclada)
       tableData.push([
         {
@@ -431,9 +441,21 @@ export default function ProductPage() {
     },
   ];
 
-  const filteredProducts = products.filter(
-    (product) => product.marca.toLowerCase().includes(filterName.toLowerCase()) // Marca no filtro
-  );
+  const filteredProducts = products.filter((product) => {
+    const nameMatch = product.name
+      .toLowerCase()
+      .includes(filterName.toLowerCase());
+
+    const activeMatch =
+      filterActive === "all" || product.active === filterActive;
+
+    const marcaMatch = product.marca
+      .toLowerCase()
+      .includes(filterMarca.toLowerCase());
+
+    return nameMatch && activeMatch && marcaMatch;
+  });
+
   const handleAddPatrimony = async (
     params: GridRenderCellParams<ProductProps>
   ) => {
@@ -463,6 +485,7 @@ export default function ProductPage() {
       <Layout>
         <Container
           sx={{
+            paddingTop: "84px",
             flex: 1,
             display: "flex",
             flexDirection: "column",
@@ -471,20 +494,35 @@ export default function ProductPage() {
         >
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
             {/* Filtro e Botões */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-start",
-                gap: 1,
-                marginTop: "5px",
-              }}
-            >
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
-                label="Filtrar por Marca"
-                variant="outlined" // Alterado de "Nome" para "Marca"
+                label="Filtrar por nome"
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
               />
+              <TextField
+                label="Filtrar por Marca"
+                value={filterMarca}
+                onChange={(e) => setFilterMarca(e.target.value)}
+              />
+
+              <FormControl sx={{ width: 200 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={filterActive}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "true") setFilterActive(true);
+                    else if (value === "false") setFilterActive(false);
+                    else setFilterActive("all");
+                  }}
+                  label="Status"
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="true">Ativos</MenuItem>
+                  <MenuItem value="false">Inativos</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
 
             <Box
@@ -522,10 +560,10 @@ export default function ProductPage() {
                 autoHeight={false}
                 initialState={{
                   pagination: {
-                    paginationModel: { pageSize: 10 },
+                    paginationModel: { pageSize: 6 },
                   },
                 }}
-                pageSizeOptions={[5, 10, 25]}
+                pageSizeOptions={[6, 10, 25]}
               />
             </Box>
           </Box>
