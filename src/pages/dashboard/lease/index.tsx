@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // "use client";
 
 import React, {
@@ -85,7 +86,7 @@ interface ClientProps {
   id: number;
   name: string;
 }
-// type Periodo = "diario" | "semanal" | "mensal" | "anual";
+type Periodo = "diario" | "semanal" | "mensal" | "anual";
 
 interface LeaseRequestPayload {
   id_locacao: number;
@@ -172,6 +173,8 @@ export default function LeasePage() {
     null
   );
   const [valorMulta, setValorMulta] = useState<number>(0);
+  const [valorNegociado, setValorNegociado] = useState<number>(0);
+
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
     start: "",
@@ -179,9 +182,7 @@ export default function LeasePage() {
   });
   const [selectedProducts, setSelectedProducts] = useState<ProductProps[]>([]);
 
-  const [period, setPeriod] = useState<
-    "diario" | "semanal" | "mensal" | "anual"
-  >("diario");
+  const [period, setPeriod] = useState<Periodo>("diario");
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -315,75 +316,198 @@ export default function LeasePage() {
     }
   };
 
+  // Função para cálculo de dias (inclui o dia final)
+  const calcularDiferencaDias = (
+    dataInicio: string,
+    dataFim: string
+  ): number => {
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+
+    console.log(
+      "[DEPURAÇÃO] Calculando diferença de dias entre:",
+      `Início: ${inicio.toISOString().split("T")[0]}`,
+      `Fim: ${fim.toISOString().split("T")[0]}`
+    );
+
+    const diff =
+      Math.floor((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) +
+      1;
+
+    console.log(`[DEPURAÇÃO] Total de dias calculado: ${diff}`);
+    return diff;
+  };
+
+  // Função SIMPLIFICADA - cálculo direto do valor diário
+  const calcularValorLocacao = (valorDiario: number, dias: number): number => {
+    console.log("[DEPURAÇÃO] Calculando valor locação:", {
+      valorDiario,
+      dias,
+    });
+
+    const valorCalculado = valorDiario * dias;
+
+    console.log(
+      `[DEPURAÇÃO] Valor calculado para ${dias} dias:`,
+      valorCalculado
+    );
+
+    return valorCalculado;
+  };
+
+  // Função handleAddLease atualizada para usar o valor negociado
   const handleAddLease = () => {
-    if (!selectedLease || selectedStocks.length === 0) return;
+    console.group("[DEPURAÇÃO] Iniciando handleAddLease");
 
-    const getUnitPrice = () => {
-      switch (period) {
-        case "diario":
-          return selectedLease.daily_value || 0;
-        case "semanal":
-          return selectedLease.weekly_value || 0;
-        case "mensal":
-          return selectedLease.monthly_value || 0;
-        default:
-          return 0;
-      }
-    };
+    // Verificação inicial com tratamento de tipos
+    const dataInicio = form.watch("data_inicio");
+    const dataFim = form.watch("data_prevista_devolucao");
 
-    const unitPrice = getUnitPrice();
+    if (
+      !selectedLease ||
+      selectedStocks.length === 0 ||
+      !dataInicio ||
+      !dataFim
+    ) {
+      console.error("[DEPURAÇÃO] Dados faltando:", {
+        selectedLease,
+        selectedStocks,
+        dataInicio,
+        dataFim,
+      });
+      console.groupEnd();
+      return;
+    }
 
-    // Cria um item para CADA patrimônio selecionado
-    const newItems = selectedStocks.map((stock) => ({
-      id_item_locacao: 0,
-      id_locacao: 0,
-      id_patrimonio: stock.id,
-      valor_unit_diario: period === "diario" ? unitPrice : 0,
-      valor_unit_semanal: period === "semanal" ? unitPrice : 0,
-      valor_unit_mensal: period === "mensal" ? unitPrice : 0,
-      valor_unit_anual: 0,
-      valor_negociado_diario: period === "diario" ? unitPrice : 0,
-      valor_negociado_semanal: period === "semanal" ? unitPrice : 0,
-      valor_negociado_mensal: period === "mensal" ? unitPrice : 0,
-      valor_negociado_anual: 0,
-      periodo: period,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      patrimonio: {
-        ...stock,
-        produto: {
-          id: selectedLease.id,
-          name: selectedLease.name,
-          marca: selectedLease.marca || "",
-          active: true,
-          daily_value: selectedLease.daily_value || 0,
-          weekly_value: selectedLease.weekly_value || 0,
-          monthly_value: selectedLease.monthly_value || 0,
-        },
-        status: "Alugado",
-      },
-    }));
+    // Validação adicional das datas
+    try {
+      new Date(dataInicio);
+      new Date(dataFim);
+    } catch (error) {
+      console.error("[DEPURAÇÃO] Datas inválidas:", error);
+      setSnackbar({
+        open: true,
+        message: "Datas inválidas. Verifique os valores informados.",
+        severity: "error",
+      });
+      console.groupEnd();
+      return;
+    }
 
-    setLeaseItems([...leaseItems, ...newItems]); // Adiciona TODOS os itens novos
+    // Cálculo dos dias com garantia de tipos
+    const dias = calcularDiferencaDias(dataInicio, dataFim);
 
-    // Atualiza o total considerando todos os itens
-    const novoTotal = [...leaseItems, ...newItems].reduce((total, item) => {
-      return (
-        total +
-        (item.periodo === "diario"
-          ? item.valor_negociado_diario
-          : item.periodo === "semanal"
-          ? item.valor_negociado_semanal
-          : item.valor_negociado_mensal)
+    console.log("[DEPURAÇÃO] Dados selecionados:", {
+      produto: selectedLease.name,
+      patrimonio: selectedStocks.map((s) => s.numero_patrimonio),
+      period,
+      dataInicio,
+      dataFim,
+      dias,
+      valorNegociado,
+    });
+
+    const valorTotal = calcularValorLocacao(valorNegociado, dias);
+
+    console.log("[DEPURAÇÃO] Criando novos itens...");
+    const newItems = selectedStocks.map((stock) => {
+      const valores = {
+        valor_unit_diario: period === "diario" ? valorNegociado : 0,
+        valor_unit_semanal: period === "semanal" ? valorNegociado : 0,
+        valor_unit_mensal: period === "mensal" ? valorNegociado : 0,
+        valor_unit_anual: period === "anual" ? valorNegociado : 0,
+        valor_negociado_diario: period === "diario" ? valorTotal : 0,
+        valor_negociado_semanal: period === "semanal" ? valorTotal : 0,
+        valor_negociado_mensal: period === "mensal" ? valorTotal : 0,
+        valor_negociado_anual: period === "anual" ? valorTotal : 0,
+      };
+
+      console.log(
+        `[DEPURAÇÃO] Novo item para patrimônio ${stock.numero_patrimonio}:`,
+        valores
       );
-    }, 0);
 
-    form.setValue("valor_total", novoTotal);
+      return {
+        id_item_locacao: 0,
+        id_locacao: 0,
+        id_patrimonio: stock.id,
+        ...valores,
+        periodo: period,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        patrimonio: {
+          ...stock,
+          produto: {
+            id: selectedLease.id,
+            name: selectedLease.name,
+            marca: selectedLease.marca || "",
+            active: true,
+            daily_value: selectedLease.daily_value || 0,
+            weekly_value: selectedLease.weekly_value || 0,
+            monthly_value: selectedLease.monthly_value || 0,
+            annual_value: selectedLease.annual_value || 0,
+          },
+          status: "Alugado",
+        },
+      };
+    });
+
+    console.log("[DEPURAÇÃO] Itens a serem adicionados:", newItems);
+    setLeaseItems([...leaseItems, ...newItems]);
+
+    console.log("[DEPURAÇÃO] Resetando seleção...");
     setselectedLease(null);
     setSelectedStocks([]);
     setQuantity(1);
+    setValorNegociado(0);
+
+    console.groupEnd();
   };
 
+  // useEffect atualizado para lidar com valores possivelmente nulos
+  useEffect(() => {
+    console.group("[DEPURAÇÃO] Atualizando valor total");
+
+    const dataInicio = form.watch("data_inicio");
+    const dataFim = form.watch("data_prevista_devolucao");
+
+    if (dataInicio && dataFim && leaseItems.length > 0) {
+      console.log("[DEPURAÇÃO] Itens atuais na locação:", leaseItems);
+
+      const novoTotal = leaseItems.reduce((total, item) => {
+        const valor =
+          item.periodo === "diario"
+            ? item.valor_negociado_diario
+            : item.periodo === "semanal"
+            ? item.valor_negociado_semanal
+            : item.periodo === "mensal"
+            ? item.valor_negociado_mensal
+            : item.valor_negociado_anual;
+
+        console.log(
+          `[DEPURAÇÃO] Item ${item.id_patrimonio} (${item.periodo}):`,
+          {
+            valorNegociado: valor,
+            patrimonio: item.patrimonio.numero_patrimonio,
+          }
+        );
+
+        return total + (Number(valor) || 0);
+      }, 0);
+
+      console.log("[DEPURAÇÃO] Novo valor total calculado:", novoTotal);
+      form.setValue("valor_total", novoTotal);
+    } else {
+      console.log("[DEPURAÇÃO] Condições não atendidas para cálculo do total");
+    }
+
+    console.groupEnd();
+  }, [
+    leaseItems,
+    form.watch("data_inicio"),
+    form.watch("data_prevista_devolucao"),
+    period,
+  ]);
   const handleRemoveLease = (index: number) => {
     const newItems = [...leaseItems];
     newItems.splice(index, 1);
@@ -487,7 +611,7 @@ export default function LeasePage() {
             }
 
             // Cria o payload para atualizar o status do patrimônio
-            return patchStock({ status: "Alugado" }, item.patrimonio.id).catch(
+            return patchStock(item.patrimonio.id, { status: "Alugado" }).catch(
               (error) => {
                 console.error(
                   `Falha ao atualizar patrimônio ${item.patrimonio.id}:`,
@@ -577,7 +701,7 @@ export default function LeasePage() {
       // 1. Atualizar status dos itens para "Disponível"
       await Promise.all(
         leaseParaDevolver.leaseItems.map((item: LeaseItem) =>
-          patchStock({ status: "Disponível" }, item.id_patrimonio)
+          patchStock(item.id_patrimonio, { status: "Disponível" })
         )
       );
 
@@ -647,7 +771,7 @@ export default function LeasePage() {
       // 1. Liberar os stocks (mudar status para "Disponível")
       await Promise.all(
         leaseParaCancelar.leaseItems.map((item: LeaseItem) =>
-          patchStock({ status: "Disponível" }, item.id_patrimonio)
+          patchStock(item.id_patrimonio, { status: "Disponível" })
         )
       );
 
@@ -839,7 +963,7 @@ export default function LeasePage() {
       headerName: "Itens/Patrimônios",
       width: 100,
       renderCell: (params) => {
-        console.log("Conteúdo completo da row:", params.row);
+        // console.log("Conteúdo completo da row:", params.row);
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = useState(false);
         const items = params.row.leaseItems || [];
@@ -1407,161 +1531,173 @@ export default function LeasePage() {
   };
 
   return (
-    <Box sx={{ height: "100vh", backgroundColor: "#E0E0E0" }}>
+    <Box
+      sx={{
+        height: "100vh", // Define a altura da tela inteira
+        backgroundColor: "#E0E0E0", // Cor de fundo global
+        display: "flex",
+        flexDirection: "column", // Garante que o conteúdo será organizado em coluna
+      }}
+    >
       <Layout>
-        <Container sx={{ width: "85vw", pt: 8, height: "calc(100vh - 34px)" }}>
+        <Container
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            height: "calc(100vh - 64px)",
+            maxWidth: "1200px",
+            justifyContent: "flex-start",
+            padding: 0,
+            margin: 0,
+            paddingTop: "64px",
+            backgroundColor: "#E0E0E0",
+          }}
+        >
           <Box
-            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              padding: 0, // Remove o padding do Box
+              height: "calc(100vh - 64px)", // Subtrai a altura do menu, assumindo que é 64px
+            }}
           >
-            <Box sx={{ paddingTop: "14px", mb: 3 }}>
-              {/* Cabeçalho com título e botões */}
+            {/* Filtro e Botões */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-start",
+                gap: 1,
+                padding: 0, // Define o padding interno para o Box de filtros e botões
+                marginTop: "5px",
+              }}
+            >
+              {/* Filtro por ID */}
+              <TextField
+                label="Nº Locação"
+                size="small"
+                sx={{ width: 120 }}
+                value={filterIdLocacao}
+                onChange={(e) => setFilterIdLocacao(e.target.value)}
+              />
 
-              {/* Filtros simplificados */}
-              {/* <Paper elevation={2} sx={{ p: 3, backgroundColor: "#f9f9f9" }}> */}
-              {/* <Box display="flex" alignItems="center" mb={2}>
-                <MdFilterAlt size={20} style={{ marginRight: 8 }} />
-                <Typography variant="h6">Filtros</Typography>
-              </Box> */}
-
-              <Box sx={{ mt: 1, mb: 3 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 1.5,
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Filtro por ID */}
+              {/* Filtro por Cliente */}
+              <Autocomplete
+                options={clients}
+                getOptionLabel={(option) => `${option.id} - ${option.name}`}
+                value={selectedClient}
+                onChange={(_, newValue) => setSelectedClient(newValue)}
+                renderInput={(params) => (
                   <TextField
-                    label="Nº Locação"
+                    {...params}
+                    label="Cliente"
                     size="small"
-                    sx={{ width: 120 }}
-                    value={filterIdLocacao}
-                    onChange={(e) => setFilterIdLocacao(e.target.value)}
+                    sx={{ width: 180 }}
                   />
+                )}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                size="small"
+              />
 
-                  {/* Filtro por Cliente */}
-                  <Autocomplete
-                    options={clients}
-                    getOptionLabel={(option) => `${option.id} - ${option.name}`}
-                    value={selectedClient}
-                    onChange={(_, newValue) => setSelectedClient(newValue)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Cliente"
-                        size="small"
-                        sx={{ width: 180 }}
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) =>
-                      option.id === value.id
-                    }
-                    size="small"
-                  />
-
-                  {/* Filtro por Status */}
-                  <TextField
-                    select
-                    label="Status"
-                    size="small"
-                    sx={{ width: 120 }}
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="Ativo">Ativo</MenuItem>
-                    <MenuItem value="Finalizado">Finalizado</MenuItem>
-                  </TextField>
-
-                  {/* Filtro por Data */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <TextField
-                      label="Início"
-                      type="date"
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                      sx={{ width: 135 }}
-                      value={dateRange.start}
-                      onChange={(e) =>
-                        setDateRange({
-                          ...dateRange,
-                          start: e.target.value,
-                        })
-                      }
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      a
-                    </Typography>
-                    <TextField
-                      label="Fim"
-                      type="date"
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                      sx={{ width: 135 }}
-                      value={dateRange.end}
-                      onChange={(e) =>
-                        setDateRange({ ...dateRange, end: e.target.value })
-                      }
-                    />
-                  </Box>
-
-                  {/* Botão Limpar */}
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<MdClear />}
-                    onClick={clearAllFilters}
-                    disabled={
-                      !filterIdLocacao &&
-                      !selectedClient &&
-                      !filterStatus &&
-                      !dateRange.start &&
-                      !dateRange.end
-                    }
-                    sx={{ height: 40 }}
-                  >
-                    Limpar
-                  </Button>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  // mb: 1,
-                }}
+              {/* Filtro por Status */}
+              <TextField
+                select
+                label="Status"
+                size="small"
+                sx={{ width: 120 }}
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
               >
-                {/* <Typography variant="h4">Gestão de Locações</Typography> */}
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="Ativo">Ativo</MenuItem>
+                <MenuItem value="Finalizado">Finalizado</MenuItem>
+              </TextField>
 
-                <Button
-                  variant="contained"
-                  onClick={() => {
-                    setEditLease(null);
-                    setOpenForm(true);
-                  }}
-                  startIcon={<IoAddCircleOutline />}
-                >
-                  Nova Locação
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={generateFilteredLeasesPDF}
-                  startIcon={<PiFilePdf />}
-                >
-                  Gerar PDF
-                </Button>
-              </Box>
+              {/* Filtro por Data */}
+
+              <TextField
+                label="Início"
+                type="date"
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 135 }}
+                value={dateRange.start}
+                onChange={(e) =>
+                  setDateRange({
+                    ...dateRange,
+                    start: e.target.value,
+                  })
+                }
+              />
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                a
+              </Typography>
+              <TextField
+                label="Fim"
+                type="date"
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 135 }}
+                value={dateRange.end}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, end: e.target.value })
+                }
+              />
+
+              {/* Botão Limpar */}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<MdClear />}
+                onClick={clearAllFilters}
+                disabled={
+                  !filterIdLocacao &&
+                  !selectedClient &&
+                  !filterStatus &&
+                  !dateRange.start &&
+                  !dateRange.end
+                }
+                sx={{ height: 40 }}
+              >
+                Limpar
+              </Button>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 1,
+                marginTop: "15px",
+              }}
+            >
+              {/* <Typography variant="h4">Gestão de Locações</Typography> */}
+
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setEditLease(null);
+                  setOpenForm(true);
+                }}
+                startIcon={<IoAddCircleOutline />}
+              >
+                Nova Locação
+              </Button>
+              <Button
+                variant="contained"
+                onClick={generateFilteredLeasesPDF}
+                startIcon={<PiFilePdf />}
+              >
+                Gerar PDF
+              </Button>
+
               {/* Contador de resultados */}
               {/* </Paper> */}
             </Box>
 
-            <Box sx={{ flex: 1, minHeight: 0 }}>
+            <Box sx={{ flexGrow: 1, marginTop: "10px" }}>
               <DataGrid
                 rows={filteredLeases}
                 columns={columns}
@@ -1626,322 +1762,6 @@ export default function LeasePage() {
               </DialogTitle>
               <DialogContent dividers>
                 <Box sx={{ display: "flex", height: "70vh" }}>
-                  <Box sx={{ width: "50%", pl: 2, overflowY: "auto" }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      Produtos da Locação
-                    </Typography>
-
-                    <Box
-                      sx={{
-                        border: "1px solid #e0e0e0",
-                        borderRadius: 1,
-                        p: 2,
-                        maxHeight: 300,
-                        overflowY: "auto",
-                      }}
-                    >
-                      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                        Adicionar Produto
-                      </Typography>
-                      <Autocomplete
-                        options={products.filter((p) => {
-                          // Verificação de segurança para produtos
-                          if (!p || typeof p.totalAvailable === "undefined") {
-                            console.warn("Produto inválido encontrado:", p);
-                            return false;
-                          }
-
-                          const isAvailable = p.totalAvailable > 0;
-
-                          const isAlreadyAdded = leaseItems.some((item) => {
-                            // Verificação completa da estrutura do item
-                            if (!item || !item.patrimonio) {
-                              console.warn("Item de locação inválido:", item);
-                              return false;
-                            }
-
-                            return item.patrimonio.id_produto === p.id;
-                          });
-
-                          return isAvailable && !isAlreadyAdded;
-                        })}
-                        getOptionLabel={(option) =>
-                          `${option.name} (${option.marca}) - ${option.totalAvailable} disponíveis`
-                        }
-                        value={selectedLease}
-                        onChange={(_, newValue) => {
-                          setselectedLease(newValue);
-                          setSelectedStocks([]);
-                          setQuantity(1);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Selecione o Produto"
-                            size="small"
-                            fullWidth
-                          />
-                        )}
-                        sx={{ mb: 2 }}
-                      />
-
-                      {selectedLease && (
-                        <>
-                          <TextField
-                            label="Quantidade"
-                            type="number"
-                            size="small"
-                            fullWidth
-                            value={quantity}
-                            onChange={(e) => {
-                              const newQuantity = Math.max(
-                                1,
-                                Math.min(
-                                  parseInt(e.target.value) || 1,
-                                  selectedLease.totalAvailable
-                                )
-                              );
-                              setQuantity(newQuantity);
-                              setSelectedStocks(
-                                selectedLease.availableStock.slice(
-                                  0,
-                                  newQuantity
-                                )
-                              );
-                            }}
-                            inputProps={{
-                              min: 1,
-                              max: selectedLease.totalAvailable,
-                            }}
-                            sx={{ mb: 2 }}
-                          />
-
-                          <Autocomplete
-                            multiple
-                            options={selectedLease.availableStock}
-                            getOptionLabel={(option) =>
-                              `${option.numero_patrimonio}`
-                            }
-                            value={selectedStocks}
-                            onChange={(_, newValue) => {
-                              setSelectedStocks(newValue);
-                              setQuantity(newValue.length);
-                            }}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label="Selecione os patrimônios"
-                                size="small"
-                                fullWidth
-                                placeholder={`${selectedStocks.length} itens selecionados`}
-                              />
-                            )}
-                            sx={{ mb: 2 }}
-                          />
-
-                          <Box
-                            sx={{
-                              display: "grid",
-                              gridTemplateColumns: "1fr 1fr",
-                              gap: 2,
-                              mb: 2,
-                            }}
-                          >
-                            <TextField
-                              select
-                              label="Período"
-                              size="small"
-                              value={period}
-                              onChange={(e) =>
-                                setPeriod(
-                                  e.target.value as
-                                    | "diario"
-                                    | "semanal"
-                                    | "mensal"
-                                    | "anual"
-                                )
-                              }
-                            >
-                              <MenuItem value="diario">
-                                Diário (R$ {selectedLease.daily_value})
-                              </MenuItem>
-                              <MenuItem value="semanal">
-                                Semanal (R$ {selectedLease.weekly_value})
-                              </MenuItem>
-                              <MenuItem value="mensal">
-                                Mensal (R$ {selectedLease.monthly_value})
-                              </MenuItem>
-                            </TextField>
-
-                            <TextField
-                              label="Valor Unitário"
-                              size="small"
-                              value={
-                                period === "diario"
-                                  ? selectedLease.daily_value
-                                  : period === "semanal"
-                                  ? selectedLease.weekly_value
-                                  : selectedLease.monthly_value
-                              }
-                              InputProps={{ readOnly: true }}
-                            />
-                          </Box>
-
-                          <Button
-                            variant="contained"
-                            fullWidth
-                            onClick={handleAddLease}
-                            disabled={selectedStocks.length === 0}
-                            startIcon={<IoAddCircleOutline />}
-                          >
-                            Adicionar à Locação
-                          </Button>
-                        </>
-                      )}
-                    </Box>
-                    <Box
-                      sx={{
-                        mb: 3,
-                        border: "1px solid #e0e0e0",
-                        borderRadius: 1,
-                        p: 1,
-                        height: 400,
-                        width: "100%",
-                      }}
-                    >
-                      {leaseItems.length > 0 ? (
-                        <DataGrid
-                          rows={leaseItems.flatMap(
-                            (item: LeaseItemProps, itemIndex: number) => {
-                              // Verificação segura do item e do patrimônio
-                              if (!item || !item.patrimonio) {
-                                console.warn(
-                                  "Item de locação inválido ignorado:",
-                                  item
-                                );
-                                return [];
-                              }
-
-                              // Encontra o produto correspondente ou usa fallback
-                              const product = products.find(
-                                (p) => p.id === item.patrimonio.produto.id
-                              ) || {
-                                name: "Produto Desconhecido",
-                                marca: "",
-                                daily_value: 0,
-                                weekly_value: 0,
-                                monthly_value: 0,
-                              };
-
-                              // Determina o período baseado nos valores preenchidos
-                              const periodo =
-                                item.valor_negociado_diario > 0
-                                  ? "diario"
-                                  : item.valor_negociado_semanal > 0
-                                  ? "semanal"
-                                  : item.valor_negociado_mensal > 0
-                                  ? "mensal"
-                                  : "diario"; // padrão
-
-                              // Determina o valor unitário baseado no período
-                              const valorUnitario =
-                                periodo === "diario"
-                                  ? item.valor_negociado_diario
-                                  : periodo === "semanal"
-                                  ? item.valor_negociado_semanal
-                                  : item.valor_negociado_mensal;
-
-                              return {
-                                id: `${itemIndex}-0`,
-                                produtoId: item.patrimonio.produto.id,
-                                nome: product.name,
-                                marca: product.marca,
-                                patrimonio:
-                                  item.patrimonio.numero_patrimonio ||
-                                  `Patrimônio ${itemIndex}`,
-                                valorUnitario: valorUnitario
-                                  ? formatCurrency(valorUnitario)
-                                  : "R$ 0,00",
-                                periodo,
-                                rawItem: item,
-                              };
-                            }
-                          )}
-                          columns={[
-                            {
-                              field: "nome",
-                              headerName: "Produto",
-                              width: 150,
-                            },
-                            {
-                              field: "patrimonio",
-                              headerName: "Patrimônio",
-                              width: 150,
-                            },
-                            {
-                              field: "valorUnitario",
-                              headerName: "Valor Unitário",
-                              width: 120,
-                            },
-                            {
-                              field: "periodo",
-                              headerName: "Período",
-                              width: 100,
-                              valueFormatter: (params) => {
-                                switch (params) {
-                                  case "diario":
-                                    return "Diário";
-                                  case "semanal":
-                                    return "Semanal";
-                                  case "mensal":
-                                    return "Mensal";
-                                  default:
-                                    return params;
-                                }
-                              },
-                            },
-                            {
-                              field: "actions",
-                              headerName: "Ações",
-                              width: 80,
-                              sortable: false,
-                              renderCell: (params) => (
-                                <IconButton
-                                  onClick={() => {
-                                    const itemIndex = leaseItems.findIndex(
-                                      (item) =>
-                                        item.patrimonio.id_produto ===
-                                        params.row.produtoId
-                                    );
-                                    handleRemoveLease(itemIndex);
-                                  }}
-                                  size="small"
-                                >
-                                  <MdDelete color="error" />
-                                </IconButton>
-                              ),
-                            },
-                          ]}
-                          disableRowSelectionOnClick
-                          autoHeight
-                          initialState={{
-                            pagination: {
-                              paginationModel: { pageSize: 10 },
-                            },
-                          }}
-                          pageSizeOptions={[5, 10, 25]}
-                        />
-                      ) : (
-                        <Typography
-                          variant="body2"
-                          color="textSecondary"
-                          sx={{ p: 1 }}
-                        >
-                          Nenhum produto adicionado
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
                   <Box
                     sx={{
                       height: "70vh",
@@ -2132,21 +1952,351 @@ export default function LeasePage() {
                       sx={{ mt: 2 }}
                     />
                   </Box>
+                  <Box sx={{ width: "50%", pl: 2, overflowY: "auto" }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      Produtos da Locação
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 1,
+                        p: 2,
+                        maxHeight: 300,
+                        overflowY: "auto",
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                        Adicionar Produto
+                      </Typography>
+                      <Autocomplete
+                        options={products.filter((p) => {
+                          // Verificação de segurança para produtos
+                          if (!p || typeof p.totalAvailable === "undefined") {
+                            console.warn("Produto inválido encontrado:", p);
+                            return false;
+                          }
+
+                          const isAvailable = p.totalAvailable > 0;
+
+                          const isAlreadyAdded = leaseItems.some((item) => {
+                            // Verificação completa da estrutura do item
+                            if (!item || !item.patrimonio) {
+                              console.warn("Item de locação inválido:", item);
+                              return false;
+                            }
+
+                            return item.patrimonio.id_produto === p.id;
+                          });
+
+                          return isAvailable && !isAlreadyAdded;
+                        })}
+                        getOptionLabel={(option) =>
+                          `${option.name} (${option.marca}) - ${option.totalAvailable} disponíveis`
+                        }
+                        value={selectedLease}
+                        onChange={(_, newValue) => {
+                          setselectedLease(newValue);
+                          setSelectedStocks([]);
+                          setQuantity(1);
+
+                          // Atualiza o valorNegociado baseado no período atual
+                          if (newValue) {
+                            setValorNegociado(
+                              period === "diario"
+                                ? newValue.daily_value || 0
+                                : period === "semanal"
+                                ? newValue.weekly_value || 0
+                                : period === "mensal"
+                                ? newValue.monthly_value || 0
+                                : newValue.annual_value || 0
+                            );
+                          } else {
+                            setValorNegociado(0); // Reset se nenhum produto selecionado
+                          }
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Selecione o Produto"
+                            size="small"
+                            fullWidth
+                          />
+                        )}
+                        sx={{ mb: 2 }}
+                      />
+
+                      {selectedLease && (
+                        <>
+                          <TextField
+                            label="Quantidade"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={quantity}
+                            onChange={(e) => {
+                              const newQuantity = Math.max(
+                                1,
+                                Math.min(
+                                  parseInt(e.target.value) || 1,
+                                  selectedLease.totalAvailable
+                                )
+                              );
+                              setQuantity(newQuantity);
+                              setSelectedStocks(
+                                selectedLease.availableStock.slice(
+                                  0,
+                                  newQuantity
+                                )
+                              );
+                            }}
+                            inputProps={{
+                              min: 1,
+                              max: selectedLease.totalAvailable,
+                            }}
+                            sx={{ mb: 2 }}
+                          />
+
+                          <Autocomplete
+                            multiple
+                            options={selectedLease.availableStock}
+                            getOptionLabel={(option) =>
+                              `${option.numero_patrimonio}`
+                            }
+                            value={selectedStocks}
+                            onChange={(_, newValue) => {
+                              setSelectedStocks(newValue);
+                              setQuantity(newValue.length);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Selecione os patrimônios"
+                                size="small"
+                                fullWidth
+                                placeholder={`${selectedStocks.length} itens selecionados`}
+                              />
+                            )}
+                            sx={{ mb: 2 }}
+                          />
+
+                          <Box
+                            sx={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 2,
+                              mb: 2,
+                            }}
+                          >
+                            <TextField
+                              select
+                              label="Período"
+                              size="small"
+                              value={period}
+                              onChange={(e) => {
+                                const novoPeriodo = e.target.value as Periodo;
+                                setPeriod(novoPeriodo);
+                                // Atualiza o valor negociado quando mudar o período
+                                setValorNegociado(
+                                  novoPeriodo === "diario"
+                                    ? selectedLease?.daily_value || 0
+                                    : novoPeriodo === "semanal"
+                                    ? selectedLease?.weekly_value || 0
+                                    : novoPeriodo === "mensal"
+                                    ? selectedLease?.monthly_value || 0
+                                    : selectedLease?.annual_value || 0
+                                );
+                              }}
+                            >
+                              <MenuItem value="diario">
+                                Diário (R$ {selectedLease?.daily_value || 0})
+                              </MenuItem>
+                              <MenuItem value="semanal">
+                                Semanal (R$ {selectedLease?.weekly_value || 0})
+                              </MenuItem>
+                              <MenuItem value="mensal">
+                                Mensal (R$ {selectedLease?.monthly_value || 0})
+                              </MenuItem>
+                              <MenuItem value="anual">
+                                Anual (R$ {selectedLease?.annual_value || 0})
+                              </MenuItem>
+                            </TextField>
+
+                            <TextField
+                              label="Valor Unitário"
+                              size="small"
+                              type="number"
+                              value={valorNegociado}
+                              onChange={(e) =>
+                                setValorNegociado(Number(e.target.value))
+                              }
+                              InputProps={{
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    R$
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          </Box>
+
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={handleAddLease}
+                            disabled={selectedStocks.length === 0}
+                            startIcon={<IoAddCircleOutline />}
+                          >
+                            Adicionar à Locação
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                    <Box
+                      sx={{
+                        mb: 3,
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 1,
+                        p: 1,
+                        height: 400,
+                        width: "100%",
+                      }}
+                    >
+                      {leaseItems.length > 0 ? (
+                        <DataGrid
+                          rows={leaseItems.flatMap(
+                            (item: LeaseItemProps, itemIndex: number) => {
+                              // Verificação segura do item e do patrimônio
+                              if (!item || !item.patrimonio) {
+                                console.warn(
+                                  "Item de locação inválido ignorado:",
+                                  item
+                                );
+                                return [];
+                              }
+
+                              // Encontra o produto correspondente ou usa fallback
+                              const product = products.find(
+                                (p) => p.id === item.patrimonio.produto.id
+                              ) || {
+                                name: "Produto Desconhecido",
+                                marca: "",
+                                daily_value: 0,
+                                weekly_value: 0,
+                                monthly_value: 0,
+                              };
+
+                              // Determina o período baseado nos valores preenchidos
+                              const periodo =
+                                item.valor_negociado_diario > 0
+                                  ? "diario"
+                                  : item.valor_negociado_semanal > 0
+                                  ? "semanal"
+                                  : item.valor_negociado_mensal > 0
+                                  ? "mensal"
+                                  : "diario"; // padrão
+
+                              // Determina o valor unitário baseado no período
+                              const valorUnitario =
+                                periodo === "diario"
+                                  ? item.valor_negociado_diario
+                                  : periodo === "semanal"
+                                  ? item.valor_negociado_semanal
+                                  : item.valor_negociado_mensal;
+
+                              return {
+                                id: `${itemIndex}-0`,
+                                produtoId: item.patrimonio.produto.id,
+                                nome: product.name,
+                                marca: product.marca,
+                                patrimonio:
+                                  item.patrimonio.numero_patrimonio ||
+                                  `Patrimônio ${itemIndex}`,
+                                valorUnitario: valorUnitario
+                                  ? formatCurrency(valorUnitario)
+                                  : "R$ 0,00",
+                                periodo,
+                                rawItem: item,
+                              };
+                            }
+                          )}
+                          columns={[
+                            {
+                              field: "nome",
+                              headerName: "Produto",
+                              width: 150,
+                            },
+                            {
+                              field: "patrimonio",
+                              headerName: "Patrimônio",
+                              width: 150,
+                            },
+                            {
+                              field: "valorUnitario",
+                              headerName: "Valor Unitário",
+                              width: 120,
+                            },
+                            {
+                              field: "periodo",
+                              headerName: "Período",
+                              width: 100,
+                              valueFormatter: (params) => {
+                                switch (params) {
+                                  case "diario":
+                                    return "Diário";
+                                  case "semanal":
+                                    return "Semanal";
+                                  case "mensal":
+                                    return "Mensal";
+                                  default:
+                                    return params;
+                                }
+                              },
+                            },
+                            {
+                              field: "actions",
+                              headerName: "Ações",
+                              width: 80,
+                              sortable: false,
+                              renderCell: (params) => (
+                                <IconButton
+                                  onClick={() => {
+                                    const itemIndex = leaseItems.findIndex(
+                                      (item) =>
+                                        item.patrimonio.id_produto ===
+                                        params.row.produtoId
+                                    );
+                                    handleRemoveLease(itemIndex);
+                                  }}
+                                  size="small"
+                                >
+                                  <MdDelete color="error" />
+                                </IconButton>
+                              ),
+                            },
+                          ]}
+                          disableRowSelectionOnClick
+                          autoHeight
+                          initialState={{
+                            pagination: {
+                              paginationModel: { pageSize: 10 },
+                            },
+                          }}
+                          pageSizeOptions={[5, 10, 25]}
+                        />
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          color="textSecondary"
+                          sx={{ p: 1 }}
+                        >
+                          Nenhum produto adicionado
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
                 </Box>
               </DialogContent>
-              {/* <DialogActions sx={{ p: 2 }}>
-                <Button
-                  onClick={() => {
-                    setOpenForm(false);
-                    setEditLease(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  {editLease ? "Atualizar" : "Cadastrar"}
-                </Button>
-              </DialogActions> */}
             </form>
             <DialogActions>
               <Button onClick={() => setOpenForm(false)} color="primary">
@@ -2175,6 +2325,15 @@ export default function LeasePage() {
                     value={dataDevolucao}
                     onChange={(e) => setDataDevolucao(e.target.value)}
                   />
+                  {/* Adiciona verificação de atraso */}
+                  {leaseParaDevolver &&
+                    new Date(dataDevolucao) >
+                      new Date(leaseParaDevolver.data_prevista_devolucao) && (
+                      <Alert severity="warning" sx={{ mt: 1 }}>
+                        Devolução atrasada! A data prevista era{" "}
+                        {formatDate(leaseParaDevolver.data_prevista_devolucao)}
+                      </Alert>
+                    )}
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
@@ -2189,6 +2348,18 @@ export default function LeasePage() {
                     value={valorMulta}
                     onChange={(e) => setValorMulta(Number(e.target.value))}
                   />
+                  {/* {leaseParaDevolver &&
+                    new Date(dataDevolucao) >
+                      new Date(leaseParaDevolver.data_prevista_devolucao) && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ mt: 1, display: "block" }}
+                      >
+                        Sugestão: Multa de 10% do valor total (R${" "}
+                        {(leaseParaDevolver.valor_total * 0.1).toFixed(2)})
+                      </Typography>
+                    )} */}
                 </Grid>
               </Grid>
 

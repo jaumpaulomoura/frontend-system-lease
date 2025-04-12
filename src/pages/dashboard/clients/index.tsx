@@ -485,10 +485,10 @@ export default function ClientPage() {
   return (
     <Box
       sx={{
-        height: "100vh",
-        backgroundColor: "#E0E0E0",
+        height: "100vh", // Define a altura da tela inteira
+        backgroundColor: "#E0E0E0", // Cor de fundo global
         display: "flex",
-        flexDirection: "column",
+        flexDirection: "column", // Garante que o conteúdo será organizado em coluna
       }}
     >
       <Layout>
@@ -498,16 +498,31 @@ export default function ClientPage() {
             display: "flex",
             flexDirection: "column",
             width: "100%",
+            height: "calc(100vh - 64px)",
+            maxWidth: "1200px",
+            justifyContent: "flex-start",
+            padding: 0,
+            margin: 0,
+            paddingTop: "64px",
+            backgroundColor: "#E0E0E0",
           }}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              padding: 0, // Remove o padding do Box
+              height: "calc(100vh - 64px)", // Subtrai a altura do menu, assumindo que é 64px
+            }}
+          >
             {/* Filtro e Botões */}
             <Box
               sx={{
                 display: "flex",
-                paddingTop: "84px",
                 justifyContent: "flex-start",
                 gap: 1,
+                padding: 0, // Define o padding interno para o Box de filtros e botões
                 marginTop: "5px",
               }}
             >

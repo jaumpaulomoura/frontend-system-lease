@@ -5,9 +5,10 @@ import api from "./api-routes";
 
 interface Props {
   status: string;
+  observacoes?: string;
 }
 
-export async function patchStock(data: Props, id: number): Promise<StockProps> {
+export async function patchStock(id: number, data: Props): Promise<StockProps> {
   try {
     const response: AxiosResponse<StockProps> = await api.post(
       `/api/stocks/patch/`,
@@ -20,6 +21,6 @@ export async function patchStock(data: Props, id: number): Promise<StockProps> {
       throw new Error(error.response?.data.message);
     }
 
-    throw new Error(`Unexpected error ocurred ${error}`);
+    throw new Error(`Unexpected error occurred ${error}`);
   }
 }
