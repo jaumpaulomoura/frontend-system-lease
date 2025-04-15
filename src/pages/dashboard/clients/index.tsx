@@ -594,12 +594,20 @@ export default function ClientPage() {
               </Button>
             </Box>
 
-            <Box sx={{ flexGrow: 1, marginTop: "10px" }}>
+            <Box
+              sx={{
+                width: "100%",
+                flexGrow: 1,
+                marginTop: "10px",
+              }}
+            >
               <DataGrid
                 rows={filteredClients}
                 columns={columns}
                 disableRowSelectionOnClick
-                autoHeight={false}
+                style={{
+                  maxWidth: "100%",
+                }}
                 initialState={{
                   pagination: {
                     paginationModel: { pageSize: 5 },

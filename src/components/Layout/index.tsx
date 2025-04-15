@@ -33,6 +33,9 @@ import { useTheme } from "@mui/material/styles";
 import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { usePathname } from "next/navigation"; // CORREÇÃO: Agora usa usePathname
 import { getResetPass } from "@services/getResetPass";
+import Image from "next/image";
+
+import Logo from "../../../public/logo.png";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { toggleTheme } = useThemeToggle();
@@ -123,15 +126,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         <Divider />
         <List>
-          <Box
-            component="img"
-            src="/logo.png"
-            sx={{
-              maxWidth: 250,
-              marginBottom: 2,
-              display: "block",
-              margin: "0 auto",
-            }}
+          <Image
+            src={Logo}
+            alt=""
+            height={45}
+            style={{ maxWidth: "100%", margin: "0 auto 10px auto" }}
           />
 
           <ListItem>
@@ -247,6 +246,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           flexDirection: "column",
           flex: 1,
           height: "100%",
+          maxWidth: "100%",
+          overflow: "hidden",
         }}
       >
         <AppBar
@@ -373,6 +374,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div
           style={{
             display: "flex",
+            maxWidth: "100%",
             flexDirection: "column",
             height: "95vh",
             backgroundColor: "#E0E0E0",
