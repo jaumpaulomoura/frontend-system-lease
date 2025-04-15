@@ -540,18 +540,27 @@ export default function OderanDashboard() {
           }}
         >
           {/* Filter Section */}
-          <Grid container spacing={2} sx={{ padding: 2 }}>
+          <Grid container spacing={1} sx={{ padding: 1 }}>
+            {" "}
+            {/* Reduzi o spacing e padding */}
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
+                {" "}
+                {/* Adicionei size="small" */}
                 <InputLabel id="product-filter-label">Produto</InputLabel>
                 <Select
                   labelId="product-filter-label"
                   value={selectedProduct}
                   label="Produto"
                   onChange={handleProductChange}
+                  sx={{ fontSize: "0.875rem" }} // Reduzi o tamanho da fonte
                 >
                   {productOptions.map((option) => (
-                    <MenuItem key={option.id} value={option.id}>
+                    <MenuItem
+                      key={option.id}
+                      value={option.id}
+                      sx={{ fontSize: "0.875rem" }}
+                    >
                       {option.name}
                     </MenuItem>
                   ))}
@@ -559,18 +568,20 @@ export default function OderanDashboard() {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel id="month-filter-label">Mês</InputLabel>
                 <Select
                   labelId="month-filter-label"
                   value={selectedMonth}
                   label="Mês"
                   onChange={handleMonthChange}
+                  sx={{ fontSize: "0.875rem" }}
                 >
                   {monthOptions.map((month, index) => (
                     <MenuItem
                       key={index}
                       value={month === "Todos os Meses" ? "all" : month}
+                      sx={{ fontSize: "0.875rem" }}
                     >
                       {month}
                     </MenuItem>
@@ -579,18 +590,20 @@ export default function OderanDashboard() {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel id="client-filter-label">Cliente</InputLabel>
                 <Select
                   labelId="client-filter-label"
                   value={selectedClient}
                   label="Cliente"
                   onChange={handleClientChange}
+                  sx={{ fontSize: "0.875rem" }}
                 >
                   {clientOptions.map((client, index) => (
                     <MenuItem
                       key={index}
                       value={client === "Todos os Clientes" ? "all" : client}
+                      sx={{ fontSize: "0.875rem" }}
                     >
                       {client}
                     </MenuItem>
@@ -601,7 +614,7 @@ export default function OderanDashboard() {
           </Grid>
 
           {/* Dashboard Content */}
-          <Grid container spacing={3} sx={{ marginTop: "10px" }}>
+          <Grid container spacing={3}>
             {/* Stock Card */}
             <Grid item xs={12} md={6}>
               <Paper
