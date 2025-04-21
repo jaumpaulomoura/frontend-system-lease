@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   createContext,
   Dispatch,
@@ -57,7 +58,22 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     userInfo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          destroyCookie(null, "auth_token");
+          setIsAutenticated(false);
+          router.push("/");
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      api.interceptors.response.eject(interceptor); // Limpa interceptor ao desmontar
+    };
   }, []);
 
   async function signIn(email: string, password: string) {
@@ -95,6 +111,8 @@ export function InitialProvider({ children }: { children: React.ReactNode }) {
 
   function signOut() {
     destroyCookie(null, "auth_token");
+    setIsAutenticated(false); // força estado de logout
+    setUserAuth(null); // limpa o user também
     setLoading(true);
 
     setTimeout(() => {
