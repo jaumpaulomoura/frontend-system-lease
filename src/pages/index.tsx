@@ -13,12 +13,15 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { InitialContext } from "@contexts/InitialContext";
+import ForgotPasswordPage from "../components/ForgotPasswordPage";
 
 export default function LoginPage() {
   const { signIn, loading } = useContext(InitialContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -127,6 +130,15 @@ export default function LoginPage() {
         >
           {loading ? <CircularProgress size={24} color="inherit" /> : "Acessar"}
         </Button>
+        <Button
+          fullWidth
+          variant="text"
+          sx={{ marginTop: 1 }}
+          onClick={() => setForgotPasswordOpen(true)}
+        >
+          Esqueceu sua senha?
+        </Button>
+
         <Typography variant="body2" fontWeight={400} textAlign="center" mt={2}>
           Versão: 0.0.1
         </Typography>
@@ -158,6 +170,11 @@ export default function LoginPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      {/* Adicione o Dialog no final */}
+      <ForgotPasswordPage
+        open={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+      />
     </Box>
   );
 }
