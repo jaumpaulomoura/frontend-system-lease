@@ -31,8 +31,12 @@ export default function ForgotPasswordPage({
 
       alert("E-mail de recuperação enviado com sucesso!");
       onClose();
-    } catch (error: any) {
-      alert(error.message || "Erro ao solicitar recuperação");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("Erro ao solicitar recuperação");
+      }
     } finally {
       setLoading(false);
     }
