@@ -1529,7 +1529,37 @@ export default function LeasePage() {
     setDateRange({ start: "", end: "" });
     setSelectedProducts([]);
   };
-
+  const estadosBrasileiros = [
+    { sigla: "AC", nome: "Acre" },
+    { sigla: "AL", nome: "Alagoas" },
+    { sigla: "AP", nome: "Amapá" },
+    { sigla: "AM", nome: "Amazonas" },
+    { sigla: "BA", nome: "Bahia" },
+    { sigla: "CE", nome: "Ceará" },
+    { sigla: "DF", nome: "Distrito Federal" },
+    { sigla: "ES", nome: "Espírito Santo" },
+    { sigla: "GO", nome: "Goiás" },
+    { sigla: "MA", nome: "Maranhão" },
+    { sigla: "MT", nome: "Mato Grosso" },
+    { sigla: "MS", nome: "Mato Grosso do Sul" },
+    { sigla: "MG", nome: "Minas Gerais" },
+    { sigla: "PA", nome: "Pará" },
+    { sigla: "PB", nome: "Paraíba" },
+    { sigla: "PR", nome: "Paraná" },
+    { sigla: "PE", nome: "Pernambuco" },
+    { sigla: "PI", nome: "Piauí" },
+    { sigla: "RJ", nome: "Rio de Janeiro" },
+    { sigla: "RN", nome: "Rio Grande do Norte" },
+    { sigla: "RS", nome: "Rio Grande do Sul" },
+    { sigla: "RO", nome: "Rondônia" },
+    { sigla: "RR", nome: "Roraima" },
+    { sigla: "SC", nome: "Santa Catarina" },
+    { sigla: "SP", nome: "São Paulo" },
+    { sigla: "SE", nome: "Sergipe" },
+    { sigla: "TO", nome: "Tocantins" },
+  ];
+  const capitalizeWords = (str: string) =>
+    str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
   return (
     <Box
       sx={{
@@ -1805,6 +1835,12 @@ export default function LeasePage() {
                         label="Rua"
                         size="small"
                         required
+                        onChange={(e) => {
+                          const capitalized = capitalizeWords(e.target.value);
+                          form.setValue("rua_locacao", capitalized, {
+                            shouldValidate: true,
+                          });
+                        }}
                       />
                       <TextField
                         {...form.register("numero_locacao")}
@@ -1835,34 +1871,93 @@ export default function LeasePage() {
                         label="Bairro"
                         size="small"
                         required
+                        onChange={(e) => {
+                          const capitalized = capitalizeWords(e.target.value);
+                          form.setValue("bairro_locacao", capitalized, {
+                            shouldValidate: true,
+                          });
+                        }}
                       />
                       <TextField
                         {...form.register("cidade_locacao")}
                         label="Cidade"
                         size="small"
                         required
+                        onChange={(e) => {
+                          const capitalized = capitalizeWords(e.target.value);
+                          form.setValue("cidade_locacao", capitalized, {
+                            shouldValidate: true,
+                          });
+                        }}
                       />
                     </Box>
 
                     <Box
                       sx={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
+                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                         gap: 2,
                         mt: 2,
+                        alignItems: "center", // Alinha os itens verticalmente
                       }}
                     >
+                      {/* Campo de Estado - Estilo igual ao TextField */}
                       <TextField
-                        {...form.register("estado_locacao")}
+                        select
                         label="Estado"
+                        value={form.watch("estado_locacao") || ""}
+                        onChange={(e) =>
+                          form.setValue("estado_locacao", e.target.value, {
+                            shouldValidate: true,
+                          })
+                        }
                         size="small"
+                        fullWidth
+                        margin="normal"
                         required
-                      />
+                        error={!!form.formState.errors.estado_locacao}
+                        helperText={
+                          form.formState.errors.estado_locacao?.message
+                        }
+                        variant="outlined" // Garante o mesmo estilo do TextField normal
+                        sx={{
+                          "& .MuiSelect-select": {
+                            padding: "8.5px 14px", // Ajuste fino para igualar ao TextField
+                          },
+                        }}
+                      >
+                        <MenuItem value="">Selecione</MenuItem>
+                        {estadosBrasileiros.map((estado) => (
+                          <MenuItem key={estado.sigla} value={estado.sigla}>
+                            {estado.sigla} - {estado.nome}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+
+                      {/* Campo de CEP */}
                       <TextField
                         {...form.register("cep_locacao")}
                         label="CEP"
                         size="small"
+                        fullWidth
+                        margin="normal"
                         required
+                        error={!!form.formState.errors.cep_locacao}
+                        helperText={form.formState.errors.cep_locacao?.message}
+                        variant="outlined"
+                        inputProps={{
+                          maxLength: 9,
+                        }}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "");
+                          const formattedValue = value.replace(
+                            /^(\d{5})(\d)/,
+                            "$1-$2"
+                          );
+                          form.setValue("cep_locacao", formattedValue, {
+                            shouldValidate: true,
+                          });
+                        }}
                       />
                     </Box>
 
@@ -1929,7 +2024,7 @@ export default function LeasePage() {
                           ),
                         }}
                       />
-                      <TextField
+                      {/* <TextField
                         {...form.register("status")}
                         label="Status"
                         select
@@ -1939,7 +2034,7 @@ export default function LeasePage() {
                         <MenuItem value="Ativo">Ativo</MenuItem>
                         <MenuItem value="Finalizado">Finalizado</MenuItem>
                         <MenuItem value="Cancelado">Cancelado</MenuItem>
-                      </TextField>
+                      </TextField> */}
                     </Box>
 
                     <TextField

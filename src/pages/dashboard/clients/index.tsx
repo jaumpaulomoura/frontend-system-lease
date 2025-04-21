@@ -2,7 +2,19 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { MdDelete, MdEdit } from "react-icons/md";
-import { Snackbar, Alert } from "@mui/material";
+import {
+  Snackbar,
+  Alert,
+  MenuItem,
+  Select,
+  FormHelperText,
+  FormControl,
+  InputLabel,
+  Grid,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 import { PiFilePdf } from "react-icons/pi";
 import {
   Box,
@@ -60,6 +72,7 @@ export default function ClientPage() {
   const [filterName, setFilterName] = useState("");
   const [filterId, setFilterId] = useState("");
   const [filterCpfCnpj, setFilterCpfCnpj] = useState("");
+  const [sameBillingAddress, setSameBillingAddress] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -481,7 +494,37 @@ export default function ClientPage() {
 
     doc.save("clientes.pdf");
   };
-
+  const estadosBrasileiros = [
+    { sigla: "AC", nome: "Acre" },
+    { sigla: "AL", nome: "Alagoas" },
+    { sigla: "AP", nome: "Amapá" },
+    { sigla: "AM", nome: "Amazonas" },
+    { sigla: "BA", nome: "Bahia" },
+    { sigla: "CE", nome: "Ceará" },
+    { sigla: "DF", nome: "Distrito Federal" },
+    { sigla: "ES", nome: "Espírito Santo" },
+    { sigla: "GO", nome: "Goiás" },
+    { sigla: "MA", nome: "Maranhão" },
+    { sigla: "MT", nome: "Mato Grosso" },
+    { sigla: "MS", nome: "Mato Grosso do Sul" },
+    { sigla: "MG", nome: "Minas Gerais" },
+    { sigla: "PA", nome: "Pará" },
+    { sigla: "PB", nome: "Paraíba" },
+    { sigla: "PR", nome: "Paraná" },
+    { sigla: "PE", nome: "Pernambuco" },
+    { sigla: "PI", nome: "Piauí" },
+    { sigla: "RJ", nome: "Rio de Janeiro" },
+    { sigla: "RN", nome: "Rio Grande do Norte" },
+    { sigla: "RS", nome: "Rio Grande do Sul" },
+    { sigla: "RO", nome: "Rondônia" },
+    { sigla: "RR", nome: "Roraima" },
+    { sigla: "SC", nome: "Santa Catarina" },
+    { sigla: "SP", nome: "São Paulo" },
+    { sigla: "SE", nome: "Sergipe" },
+    { sigla: "TO", nome: "Tocantins" },
+  ];
+  const capitalizeWords = (str: string) =>
+    str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
   return (
     <Box
       sx={{
@@ -646,211 +689,433 @@ export default function ClientPage() {
         open={openForm}
         onClose={() => {
           setOpenForm(false);
-          setEditClient(null); // ainda fecha normalmente
+          setEditClient(null);
+          setSameBillingAddress(false);
         }}
         TransitionProps={{
-          onExited: () => form.reset(), // reset só depois que o modal for totalmente desmontado
+          onExited: () => form.reset(),
         }}
+        fullWidth
+        maxWidth="md"
       >
         <DialogTitle>
           {editClient ? "Editar Cliente" : "Adicionar Cliente"}
         </DialogTitle>
         <DialogContent>
           <form onSubmit={form.handleSubmit(handleCreateOrUpdate)}>
-            <TextField
-              {...form.register("name")}
-              label="Nome"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.name}
-              helperText={form.formState.errors.name?.message}
-            />
+            {/* Dados Pessoais */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Dados Pessoais
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    {...form.register("name")}
+                    label="Nome Completo"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.name}
+                    helperText={form.formState.errors.name?.message}
+                    onChange={(e) => {
+                      const capitalized = capitalizeWords(e.target.value);
+                      form.setValue("name", capitalized, {
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                </Grid>
 
-            <TextField
-              label="CPF/CNPJ"
-              fullWidth
-              margin="normal"
-              value={form.watch("cpf_cnpj")}
-              onChange={(e) => {
-                const rawValue = e.target.value.replace(/\D/g, "");
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="CPF/CNPJ"
+                    fullWidth
+                    margin="normal"
+                    value={form.watch("cpf_cnpj")}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, "");
+                      let formattedValue = "";
 
-                // Aplica máscara dinâmica
-                let formattedValue = "";
-                if (rawValue.length <= 11) {
-                  formattedValue = rawValue
-                    .replace(/(\d{3})(\d)/, "$1.$2")
-                    .replace(/(\d{3})(\d)/, "$1.$2")
-                    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-                } else {
-                  formattedValue = rawValue
-                    .replace(/^(\d{2})(\d)/, "$1.$2")
-                    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-                    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-                    .replace(/(\d{4})(\d)/, "$1-$2")
-                    .substring(0, 18); // Limite máximo para CNPJ
-                }
+                      if (rawValue.length <= 11) {
+                        formattedValue = rawValue
+                          .replace(/(\d{3})(\d)/, "$1.$2")
+                          .replace(/(\d{3})(\d)/, "$1.$2")
+                          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+                      } else {
+                        formattedValue = rawValue
+                          .replace(/^(\d{2})(\d)/, "$1.$2")
+                          .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                          .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                          .replace(/(\d{4})(\d)/, "$1-$2")
+                          .substring(0, 18);
+                      }
 
-                form.setValue("cpf_cnpj", formattedValue, {
-                  shouldValidate: true,
-                });
+                      form.setValue("cpf_cnpj", formattedValue, {
+                        shouldValidate: true,
+                      });
+                    }}
+                    error={!!form.formState.errors.cpf_cnpj}
+                    helperText={form.formState.errors.cpf_cnpj?.message}
+                    inputProps={{ maxLength: 18 }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Telefone"
+                    fullWidth
+                    margin="normal"
+                    value={form.watch("telefone")}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, "");
+                      const formattedValue = rawValue
+                        .replace(/^(\d{2})(\d)/g, "($1) $2")
+                        .replace(/(\d)(\d{4})$/, "$1-$2");
+                      form.setValue("telefone", formattedValue, {
+                        shouldValidate: true,
+                      });
+                    }}
+                    error={!!form.formState.errors.telefone}
+                    helperText={form.formState.errors.telefone?.message}
+                    inputProps={{ maxLength: 15 }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    {...form.register("email")}
+                    label="Email"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.email}
+                    helperText={form.formState.errors.email?.message}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Endereço Principal */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Endereço Principal
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={8}>
+                  <TextField
+                    {...form.register("rua")}
+                    label="Rua"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.rua}
+                    helperText={form.formState.errors.rua?.message}
+                    onChange={(e) => {
+                      const capitalized = capitalizeWords(e.target.value);
+                      form.setValue("rua", capitalized, {
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    {...form.register("numero")}
+                    label="Número"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.numero}
+                    helperText={form.formState.errors.numero?.message}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    {...form.register("complemento")}
+                    label="Complemento"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.complemento}
+                    helperText={form.formState.errors.complemento?.message}
+                    onChange={(e) => {
+                      const capitalized = capitalizeWords(e.target.value);
+                      form.setValue("complemento", capitalized, {
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    {...form.register("bairro")}
+                    label="Bairro"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.bairro}
+                    helperText={form.formState.errors.bairro?.message}
+                    onChange={(e) => {
+                      const capitalized = capitalizeWords(e.target.value);
+                      form.setValue("bairro", capitalized, {
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    {...form.register("cidade")}
+                    label="Cidade"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.cidade}
+                    helperText={form.formState.errors.cidade?.message}
+                    onChange={(e) => {
+                      const capitalized = capitalizeWords(e.target.value);
+                      form.setValue("cidade", capitalized, {
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <FormControl
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.estado}
+                  >
+                    <InputLabel>Estado</InputLabel>
+                    <Select
+                      label="Estado"
+                      value={form.watch("estado") || ""}
+                      onChange={(e) =>
+                        form.setValue("estado", e.target.value, {
+                          shouldValidate: true,
+                        })
+                      }
+                    >
+                      <MenuItem value="">Selecione</MenuItem>
+                      {estadosBrasileiros.map((estado) => (
+                        <MenuItem key={estado.sigla} value={estado.sigla}>
+                          {estado.sigla} - {estado.nome}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <FormHelperText>
+                      {form.formState.errors.estado?.message}
+                    </FormHelperText>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    {...form.register("cep")}
+                    label="CEP"
+                    fullWidth
+                    margin="normal"
+                    error={!!form.formState.errors.cep}
+                    helperText={form.formState.errors.cep?.message}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Opção para endereço de cobrança igual */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={sameBillingAddress}
+                  onChange={(e) => {
+                    setSameBillingAddress(e.target.checked);
+                    if (e.target.checked) {
+                      const values = form.getValues();
+                      form.setValue("rua_cobranca", values.rua, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("numero_cobranca", values.numero, {
+                        shouldValidate: true,
+                      });
+                      form.setValue(
+                        "complemento_cobranca",
+                        values.complemento,
+                        { shouldValidate: true }
+                      );
+                      form.setValue("bairro_cobranca", values.bairro, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("cidade_cobranca", values.cidade, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("estado_cobranca", values.estado, {
+                        shouldValidate: true,
+                      });
+                      form.setValue("cep_cobranca", values.cep, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                  color="primary"
+                />
+              }
+              label="Usar mesmo endereço para cobrança"
+              sx={{
+                mb: 2,
+                p: 1,
+                backgroundColor: sameBillingAddress
+                  ? "rgba(25, 118, 210, 0.08)"
+                  : "transparent",
+                borderRadius: 1,
+                width: "100%",
               }}
-              error={!!form.formState.errors.cpf_cnpj}
-              helperText={form.formState.errors.cpf_cnpj?.message}
-              inputProps={{
-                maxLength: 18, // 14 dígitos + máscara
-              }}
             />
 
-            <TextField
-              {...form.register("telefone")}
-              label="Telefone"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.telefone}
-              helperText={form.formState.errors.telefone?.message}
-            />
+            {/* Endereço de Cobrança */}
+            {!sameBillingAddress && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Endereço de Cobrança
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={8}>
+                    <TextField
+                      {...form.register("rua_cobranca")}
+                      label="Rua de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.rua_cobranca}
+                      helperText={form.formState.errors.rua_cobranca?.message}
+                      onChange={(e) => {
+                        const capitalized = capitalizeWords(e.target.value);
+                        form.setValue("rua_cobranca", capitalized, {
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </Grid>
 
-            <TextField
-              {...form.register("email")}
-              label="Email"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.email}
-              helperText={form.formState.errors.email?.message}
-            />
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      {...form.register("numero_cobranca")}
+                      label="Número de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.numero_cobranca}
+                      helperText={
+                        form.formState.errors.numero_cobranca?.message
+                      }
+                    />
+                  </Grid>
 
-            <TextField
-              {...form.register("rua")}
-              label="Rua"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.rua}
-              helperText={form.formState.errors.rua?.message}
-            />
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      {...form.register("complemento_cobranca")}
+                      label="Complemento de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.complemento_cobranca}
+                      helperText={
+                        form.formState.errors.complemento_cobranca?.message
+                      }
+                      onChange={(e) => {
+                        const capitalized = capitalizeWords(e.target.value);
+                        form.setValue("complemento_cobranca", capitalized, {
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </Grid>
 
-            <TextField
-              {...form.register("numero")}
-              label="Número"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.numero}
-              helperText={form.formState.errors.numero?.message}
-            />
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      {...form.register("bairro_cobranca")}
+                      label="Bairro de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.bairro_cobranca}
+                      helperText={
+                        form.formState.errors.bairro_cobranca?.message
+                      }
+                      onChange={(e) => {
+                        const capitalized = capitalizeWords(e.target.value);
+                        form.setValue("bairro_cobranca", capitalized, {
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </Grid>
 
-            <TextField
-              {...form.register("complemento")}
-              label="Complemento"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.complemento}
-              helperText={form.formState.errors.complemento?.message}
-            />
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      {...form.register("cidade_cobranca")}
+                      label="Cidade de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.cidade_cobranca}
+                      helperText={
+                        form.formState.errors.cidade_cobranca?.message
+                      }
+                      onChange={(e) => {
+                        const capitalized = capitalizeWords(e.target.value);
+                        form.setValue("cidade_cobranca", capitalized, {
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </Grid>
 
-            <TextField
-              {...form.register("bairro")}
-              label="Bairro"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.bairro}
-              helperText={form.formState.errors.bairro?.message}
-            />
+                  <Grid item xs={12} md={3}>
+                    <FormControl
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.estado_cobranca}
+                    >
+                      <InputLabel>Estado de Cobrança</InputLabel>
+                      <Select
+                        label="Estado de Cobrança"
+                        value={form.watch("estado_cobranca") || ""}
+                        onChange={(e) =>
+                          form.setValue("estado_cobranca", e.target.value, {
+                            shouldValidate: true,
+                          })
+                        }
+                      >
+                        <MenuItem value="">Selecione</MenuItem>
+                        {estadosBrasileiros.map((estado) => (
+                          <MenuItem
+                            key={`cobranca-${estado.sigla}`}
+                            value={estado.sigla}
+                          >
+                            {estado.sigla} - {estado.nome}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {form.formState.errors.estado_cobranca?.message}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
 
-            <TextField
-              {...form.register("cidade")}
-              label="Cidade"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.cidade}
-              helperText={form.formState.errors.cidade?.message}
-            />
-
-            <TextField
-              {...form.register("estado")}
-              label="Estado"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.estado}
-              helperText={form.formState.errors.estado?.message}
-            />
-
-            <TextField
-              {...form.register("cep")}
-              label="CEP"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.cep}
-              helperText={form.formState.errors.cep?.message}
-            />
-
-            <TextField
-              {...form.register("rua_cobranca")}
-              label="Rua de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.rua_cobranca}
-              helperText={form.formState.errors.rua_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("numero_cobranca")}
-              label="Número de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.numero_cobranca}
-              helperText={form.formState.errors.numero_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("complemento_cobranca")}
-              label="Complemento de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.complemento_cobranca}
-              helperText={form.formState.errors.complemento_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("bairro_cobranca")}
-              label="Bairro de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.bairro_cobranca}
-              helperText={form.formState.errors.bairro_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("cidade_cobranca")}
-              label="Cidade de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.cidade_cobranca}
-              helperText={form.formState.errors.cidade_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("estado_cobranca")}
-              label="Estado de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.estado_cobranca}
-              helperText={form.formState.errors.estado_cobranca?.message}
-            />
-
-            <TextField
-              {...form.register("cep_cobranca")}
-              label="CEP de Cobrança"
-              fullWidth
-              margin="normal"
-              error={!!form.formState.errors.cep_cobranca}
-              helperText={form.formState.errors.cep_cobranca?.message}
-            />
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      {...form.register("cep_cobranca")}
+                      label="CEP de Cobrança"
+                      fullWidth
+                      margin="normal"
+                      error={!!form.formState.errors.cep_cobranca}
+                      helperText={form.formState.errors.cep_cobranca?.message}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
           </form>
         </DialogContent>
         <DialogActions>
           <Button
             onClick={() => {
-              setOpenForm(false); // apenas fecha
-              setEditClient(null); // se necessário
+              setOpenForm(false);
+              setEditClient(null);
             }}
             color="primary"
           >
@@ -859,6 +1124,7 @@ export default function ClientPage() {
           <Button
             onClick={form.handleSubmit(handleCreateOrUpdate)}
             color="primary"
+            variant="contained"
           >
             {editClient ? "Salvar Alterações" : "Adicionar Cliente"}
           </Button>

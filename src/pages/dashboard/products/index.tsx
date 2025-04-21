@@ -472,7 +472,8 @@ export default function ProductPage() {
       console.error("Erro ao buscar dados de estoque:", error);
     }
   };
-
+  const capitalizeWords = (str: string) =>
+    str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
   return (
     <Box
       sx={{
@@ -629,6 +630,12 @@ export default function ProductPage() {
               {...form.register("name")}
               error={!!form.formState.errors.name}
               helperText={form.formState.errors.name?.message}
+              onChange={(e) => {
+                const capitalized = capitalizeWords(e.target.value);
+                form.setValue("name", capitalized, {
+                  shouldValidate: true,
+                });
+              }}
             />
             <TextField
               label="Marca" // Mudado de "Nome" para "Marca"
@@ -637,6 +644,12 @@ export default function ProductPage() {
               {...form.register("marca")}
               error={!!form.formState.errors.marca}
               helperText={form.formState.errors.marca?.message}
+              onChange={(e) => {
+                const capitalized = capitalizeWords(e.target.value);
+                form.setValue("marca", capitalized, {
+                  shouldValidate: true,
+                });
+              }}
             />
             <TextField
               label="Descrição"
