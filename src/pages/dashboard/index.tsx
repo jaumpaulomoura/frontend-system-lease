@@ -87,6 +87,8 @@ export default function OderanDashboard() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const { showLoginSuccess, setShowLoginSuccess } = useContext(InitialContext);
   const [upcomingLeases, setUpcomingLeases] = useState<UpcomingReturn[]>([]);
+  const { signOut } = useContext(InitialContext);
+
   console.log("upcomingLeases", upcomingLeases);
 
   const leaseColumns: GridColDef[] = [
@@ -462,7 +464,10 @@ export default function OderanDashboard() {
           {error}
         </Typography>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            signOut(); // Só logout, não mexe em login/success
+            window.location.reload();
+          }}
           style={{
             padding: "10px 20px",
             backgroundColor: chartColors.revenue,
