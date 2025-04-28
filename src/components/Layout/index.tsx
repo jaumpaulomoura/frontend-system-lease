@@ -28,9 +28,9 @@ import { UserProps } from "@interfaces/User";
 import { getMeData } from "@services/getMeData";
 import Link from "next/link";
 import { InitialContext } from "@contexts/InitialContext";
-import { useThemeToggle } from "@theme/ThemeToggleContext";
+// import { useThemeToggle } from "@theme/ThemeToggleContext";
 import { useTheme } from "@mui/material/styles";
-import { Brightness4, Brightness7 } from "@mui/icons-material";
+// import { Brightness4, Brightness7 } from "@mui/icons-material";
 import { usePathname } from "next/navigation"; // CORREÇÃO: Agora usa usePathname
 import { getResetPass } from "@services/getResetPass";
 import Image from "next/image";
@@ -38,7 +38,7 @@ import Image from "next/image";
 import Logo from "../../../public/logo.png";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { toggleTheme } = useThemeToggle();
+  // const { toggleTheme } = useThemeToggle();
   const { signOut, userAuth } = useContext(InitialContext);
   const [user, setUser] = useState<UserProps | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -344,7 +344,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </DialogActions>
                   </Dialog>
                 </>
-                <Button
+                {/* <Button
                   onClick={toggleTheme}
                   sx={{
                     minWidth: "40px",
@@ -364,7 +364,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   ) : (
                     <Brightness4 />
                   )}
-                </Button>
+                </Button> */}
               </Box>
             </Box>
           </Toolbar>

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {
   useEffect,
   useState,
@@ -407,7 +408,7 @@ export default function OderanDashboard() {
     .filter((lease) => lease?.status === "Finalizado")
     .reduce((sum, lease) => sum + Number(lease?.valor_total || 0), 0);
 
-  const annualRevenue = monthlyRevenue * 12;
+  // const annualRevenue = monthlyRevenue * 12;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -793,17 +794,17 @@ export default function OderanDashboard() {
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid item xs={6}>
-                    <Typography variant="body1">Mês</Typography>
+                    <Typography variant="body1">Total</Typography>
                     <Typography variant="h5">
                       {formatCurrency(monthlyRevenue)}
                     </Typography>
                   </Grid>
-                  <Grid item xs={6}>
+                  {/* <Grid item xs={6}>
                     <Typography variant="body1">Ano</Typography>
                     <Typography variant="h5">
                       {formatCurrency(annualRevenue)}
                     </Typography>
-                  </Grid>
+                  </Grid> */}
                 </Grid>
 
                 <Box sx={{ height: "250px" }}>
