@@ -205,8 +205,10 @@ export default function OderanDashboard() {
     const clients = new Set<string>();
 
     leases.forEach((lease) => {
-      if (lease.data_pagamento) {
-        const date = new Date(lease.data_pagamento);
+      const relevantDate =
+        lease.data_pagamento || lease.data_prevista_devolucao;
+      if (relevantDate) {
+        const date = new Date(relevantDate);
         months.add(`${date.getMonth() + 1}/${date.getFullYear()}`);
       }
       if (lease.cliente?.name) {
@@ -236,11 +238,15 @@ export default function OderanDashboard() {
     // Apply month and client filters
     if (selectedMonth !== "all" || selectedClient !== "all") {
       filteredLeases = filteredLeases.filter((lease) => {
+        // Verifica tanto data_pagamento quanto data_prevista_devolucao
+        const relevantDate =
+          lease.data_pagamento || lease.data_prevista_devolucao;
+
         const monthMatch =
           selectedMonth === "all" ||
-          (lease.data_pagamento &&
-            `${new Date(lease.data_pagamento).getMonth() + 1}/${new Date(
-              lease.data_pagamento
+          (relevantDate &&
+            `${new Date(relevantDate).getMonth() + 1}/${new Date(
+              relevantDate
             ).getFullYear()}` === selectedMonth);
 
         const clientMatch =
@@ -353,9 +359,7 @@ export default function OderanDashboard() {
         } catch (error) {
           console.error("Erro ao processar data de pagamento:", error);
         }
-      }
-      // Receita em aberto (sem data_pagamento mas com data_prevista_devolucao)
-      else if (lease.data_prevista_devolucao) {
+      } else if (lease.data_prevista_devolucao) {
         try {
           const date = new Date(lease.data_prevista_devolucao);
           const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
@@ -444,11 +448,11 @@ export default function OderanDashboard() {
   const rentedPercentage =
     totalStock > 0 ? Math.round((totalRented / totalStock) * 100) : 0;
 
-  const monthlyRevenue = filteredData.filteredLeases
-    // .filter((lease) => lease?.status === "Finalizado")
-    .reduce((sum, lease) => sum + Number(lease?.valor_total || 0), 0);
+  // const monthlyRevenue = filteredData.filteredLeases
+  //   // .filter((lease) => lease?.status === "Finalizado")
+  //   .reduce((sum, lease) => sum + Number(lease?.valor_total || 0), 0);
 
-  // const annualRevenue = monthlyRevenue * 12;
+  // // const annualRevenue = monthlyRevenue * 12;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -531,7 +535,9 @@ export default function OderanDashboard() {
   const upcomingDueLeases = leases
     .filter((lease) => {
       // Usa data_pagamento se existir, senão data_locacao
-      const dueDate = new Date(lease.data_pagamento || lease.data_locacao);
+      const dueDate = new Date(
+        lease.data_pagamento || lease.data_prevista_devolucao
+      );
       if (isNaN(dueDate.getTime())) return false; // Data inválida
 
       dueDate.setHours(0, 0, 0, 0);
