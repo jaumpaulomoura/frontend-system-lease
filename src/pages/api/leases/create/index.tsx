@@ -27,6 +27,7 @@ interface LeaseRequestBody {
   data_inicio: string;
   data_prevista_devolucao: string;
   data_real_devolucao?: string;
+  data_pagamento?: string;
   valor_total: number;
   valor_multa: number;
   status: string;

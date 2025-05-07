@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 // "use client";
 
@@ -58,13 +59,15 @@ import { getProductList } from "@services/getProductList";
 import { getStocksList } from "@services/getStocksList";
 import { patchStock } from "@services/patchStock";
 import { PDFDownloadLink } from "@react-pdf/renderer";
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf, FaPrint } from "react-icons/fa";
 import LeaseContractPDF from "@components/LeaseContractPDF";
 import { ErrorOutline } from "@mui/icons-material";
 import { PiFilePdf } from "react-icons/pi";
 import jsPDF from "jspdf";
 import autoTable, { UserOptions } from "jspdf-autotable";
 import { LeaseItemProps } from "@interfaces/LeaseItens";
+import { pdf } from "@react-pdf/renderer";
+import ReturnReceiptPDF from "@components/ReturnReceiptPDF";
 // import clients from "@pages/api/clients";
 
 declare module "jspdf" {
@@ -101,6 +104,7 @@ interface LeaseRequestPayload {
   data_inicio: string;
   data_prevista_devolucao: string;
   data_real_devolucao?: string;
+  data_pagamento?: string;
   valor_total: number;
   valor_multa: number;
   status: string;
@@ -130,6 +134,7 @@ export type FormData = {
   data_inicio: string | null;
   data_prevista_devolucao: string | null;
   data_real_devolucao?: string | null;
+  data_pagamento?: string | null;
   valor_total: number;
   valor_multa: number;
   status: string;
@@ -168,6 +173,9 @@ export default function LeasePage() {
   const [dataDevolucao, setDataDevolucao] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [dataPagamento, setDataPagamento] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
   const [cancelamentoModalOpen, setCancelamentoModalOpen] = useState(false);
   const [leaseParaCancelar, setLeaseParaCancelar] = useState<LeaseProps | null>(
     null
@@ -202,6 +210,7 @@ export default function LeasePage() {
       data_inicio: "",
       data_prevista_devolucao: "",
       data_real_devolucao: "",
+      data_pagamento: "",
       valor_total: 0,
       valor_multa: 0,
       status: "Ativo",
@@ -555,6 +564,9 @@ export default function LeasePage() {
         data_real_devolucao: data.data_real_devolucao
           ? ensureDateString(data.data_real_devolucao)
           : undefined,
+        data_pagamento: data.data_pagamento
+          ? ensureDateString(data.data_pagamento)
+          : undefined,
         valor_total: Number(
           leaseItems
             .reduce((total, item) => {
@@ -682,16 +694,16 @@ export default function LeasePage() {
     setDevolucaoModalOpen(false);
     setLeaseParaDevolver(null);
     setDataDevolucao(new Date().toISOString().split("T")[0]);
+    setDataPagamento(new Date().toISOString().split("T")[0]);
     setValorMulta(0);
   };
 
-  const handleConfirmarDevolucao = async () => {
+  const handleConfirmarDevolucao = async (imprimirComprovante = false) => {
     if (!leaseParaDevolver) {
       setSnackbar({
         open: true,
         message: "Nenhuma locação selecionada para devolução",
         severity: "warning",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
       return;
     }
@@ -705,11 +717,12 @@ export default function LeasePage() {
         )
       );
 
-      // 2. Atualizar a locação com data de devolução real
+      // 2. Atualizar a locação
       await patchLease(
         {
           id_locacao: leaseParaDevolver.id_locacao,
           data_real_devolucao: new Date(dataDevolucao).toISOString(),
+          data_pagamento: new Date(dataPagamento).toISOString(),
           valor_multa: valorMulta,
           status: "Finalizado",
         },
@@ -723,23 +736,43 @@ export default function LeasePage() {
       handleCloseDevolucaoModal();
       setValorMulta(0);
 
-      // Snackbar de sucesso (inferior direito)
+      // 5. Mostrar mensagem de sucesso
       setSnackbar({
         open: true,
-        message: "Devolução realizada com sucesso!",
+        message:
+          "Devolução realizada com sucesso!" +
+          (imprimirComprovante ? " Gerando comprovante..." : ""),
         severity: "success",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
+
+      // 6. Se solicitado, gerar o comprovante
+      if (imprimirComprovante) {
+        const pdfWindow = window.open("", "_blank");
+        pdfWindow?.document.write(
+          "<div style='text-align:center;margin-top:200px'><h3>Gerando comprovante...</h3></div>"
+        );
+
+        // Usando react-pdf para gerar o PDF
+        const pdfBlob = await pdf(
+          <ReturnReceiptPDF
+            lease={leaseParaDevolver}
+            devolutionData={{
+              dataDevolucao,
+              valorMulta,
+            }}
+          />
+        ).toBlob();
+
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        pdfWindow?.location.replace(pdfUrl);
+      }
     } catch (error) {
       console.error("Erro ao realizar devolução:", error);
-
-      // Snackbar de erro (inferior direito)
       setSnackbar({
         open: true,
         message:
           error instanceof Error ? error.message : "Erro ao realizar devolução",
         severity: "error",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
     } finally {
       setLoading(false);
@@ -810,9 +843,51 @@ export default function LeasePage() {
       setLoading(false);
     }
   };
+  console.log("=== DEBUG LEASE DATA ===");
+  console.log("Número de leases:", leases.length);
+  if (leases.length > 0) {
+    console.log("Primeiro lease:", leases[0]);
+    console.log(
+      "Estrutura completa do primeiro lease:",
+      JSON.parse(JSON.stringify(leases[0]))
+    );
+    console.log("Cliente existe?", "cliente" in leases[0]);
+    console.log("cliente_id value:", leases[0].cliente_id);
+    console.log("cliente object:", leases[0].cliente);
+  }
   const columns: GridColDef<LeaseProps>[] = [
     { field: "id_locacao", headerName: "Nº Locação", width: 100 },
-    { field: "cliente_id", headerName: "ID Cliente", width: 100 },
+    {
+      field: "cliente",
+      headerName: "Cliente",
+      width: 120,
+      valueGetter: (params: any) => {
+        if (!params || !params.row) return "Sem dados";
+
+        const clienteName = params.row.cliente?.name;
+        const clienteId = params.row.cliente_id;
+
+        return clienteName || `ID: ${clienteId ?? "Não especificado"}`;
+      },
+      renderCell: (params: any) => {
+        // Mesma lógica segura
+        const clienteName = params.row.cliente?.name;
+        const clienteId = params.row.cliente_id;
+
+        return (
+          <div>
+            <div>{clienteName || `ID: ${clienteId ?? "N/E"}`}</div>
+
+            {clienteName && clienteId && (
+              <div style={{ fontSize: "0.75rem", color: "#666" }}>
+                ID: {clienteId}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+
     {
       field: "data_inicio",
       headerName: "Data Início",
@@ -825,6 +900,18 @@ export default function LeasePage() {
       width: 150,
       valueFormatter: (params) => formatDateDatagrid(params),
     },
+    {
+      field: "data_pagamento",
+      headerName: "Pagamento",
+      width: 180,
+      valueFormatter: (params) => {
+        if (!params) return "❌ Não pago";
+
+        const dataFormatada = new Date(params).toLocaleDateString("pt-BR");
+        return `✅ Pago em ${dataFormatada}`;
+      },
+    },
+
     {
       field: "valor_total",
       headerName: "Valor Total",
@@ -874,50 +961,185 @@ export default function LeasePage() {
     //     </Box>
     //   ),
     // },
+    // {
+    //   field: "comprovante",
+    //   headerName: "Comprovante",
+    //   width: 120,
+    //   renderCell: (params) => {
+    //     if (params.row.status !== "Finalizado") return null;
+
+    //     return (
+    //       <PDFDownloadLink
+    //         document={
+    //           <ReturnReceiptPDF
+    //             lease={params.row}
+    //             devolutionData={{
+    //               dataDevolucao: params.row.data_real_devolucao,
+    //               valorMulta: params.row.valor_multa,
+    //             }}
+    //           />
+    //         }
+    //         fileName={`comprovante-devolucao-${params.row.id_locacao}.pdf`}
+    //       >
+    //         {({ loading }) => (
+    //           <Button
+    //             variant="outlined"
+    //             size="small"
+    //             disabled={loading}
+    //             startIcon={<FaFilePdf />}
+    //           >
+    //             {loading ? "Gerando..." : ""}
+    //           </Button>
+    //         )}
+    //       </PDFDownloadLink>
+    //     );
+    //   },
+    // },
+    // {
+    //   field: "devolucao",
+    //   headerName: "",
+    //   width: 110,
+    //   renderCell: (params) => (
+    //     <Tooltip
+    //       title={
+    //         params.row.status === "Finalizado" ||
+    //         params.row.status === "Cancelado"
+    //           ? "Locação já finalizada/cancelada"
+    //           : "Registrar devolução"
+    //       }
+    //     >
+    //       <span>
+    //         <Button
+    //           variant="outlined"
+    //           color={
+    //             params.row.status === "Finalizado" ||
+    //             params.row.status === "Cancelado"
+    //               ? "inherit" // Usar "inherit" em vez de "default"
+    //               : "secondary"
+    //           }
+    //           size="small"
+    //           onClick={(e) => {
+    //             e.stopPropagation();
+    //             handleOpenDevolucaoModal(params.row);
+    //           }}
+    //           disabled={
+    //             params.row.status === "Finalizado" ||
+    //             params.row.status === "Cancelado"
+    //           }
+    //           sx={{
+    //             textTransform: "none",
+    //             "&.Mui-disabled": {
+    //               borderColor: "transparent",
+    //               color: "text.disabled",
+    //             },
+    //           }}
+    //           startIcon={<TbTruckReturn size={18} />}
+    //         >
+    //           {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"}
+    //         </Button>
+    //       </span>
+    //     </Tooltip>
+    //   ),
+    // },
     {
       field: "devolucao",
       headerName: "",
-      width: 110,
+      width: 130, // Aumente a largura para acomodar os dois botões
       renderCell: (params) => (
-        <Tooltip
-          title={
-            params.row.status === "Finalizado" ||
-            params.row.status === "Cancelado"
-              ? "Locação já finalizada/cancelada"
-              : "Registrar devolução"
-          }
+        <Box
+          display="flex"
+          alignItems="center"
+          sx={{
+            gap: 0.055, // Espaçamento mínimo (2px)
+            "& .MuiButton-root": {
+              padding: "4px 8px", // Padding mais compacto
+              minWidth: "auto",
+            },
+            "& .MuiIconButton-root": {
+              padding: "4px", // Ícone mais compacto
+              marginLeft: "-6px", // Compensa o espaçamento
+            },
+          }}
         >
-          <span>
-            <Button
-              variant="outlined"
-              color={
-                params.row.status === "Finalizado" ||
-                params.row.status === "Cancelado"
-                  ? "inherit" // Usar "inherit" em vez de "default"
-                  : "secondary"
+          {/* Botão "Devolvido" (mantido como está) */}
+          <Tooltip
+            title={
+              params.row.status === "Finalizado" ||
+              params.row.status === "Cancelado"
+                ? "Locação já finalizada/cancelada"
+                : "Registrar devolução"
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                color={
+                  params.row.status === "Finalizado" ||
+                  params.row.status === "Cancelado"
+                    ? "inherit"
+                    : "secondary"
+                }
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenDevolucaoModal(params.row);
+                }}
+                disabled={
+                  params.row.status === "Finalizado" ||
+                  params.row.status === "Cancelado"
+                }
+                sx={{
+                  textTransform: "none",
+                  minWidth: "auto",
+                  "&.Mui-disabled": {
+                    borderColor: "transparent",
+                    color: "text.disabled",
+                  },
+                }}
+                startIcon={<TbTruckReturn size={16} />}
+              >
+                {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"}
+              </Button>
+            </span>
+          </Tooltip>
+
+          {params.row.status === "Finalizado" && (
+            <PDFDownloadLink
+              document={
+                <ReturnReceiptPDF
+                  lease={params.row}
+                  devolutionData={{
+                    dataDevolucao:
+                      params.row.data_real_devolucao ||
+                      new Date().toISOString(), // Fallback para data atual
+                    valorMulta: params.row.valor_multa || 0, // Fallback para 0 se undefined
+                  }}
+                />
               }
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDevolucaoModal(params.row);
-              }}
-              disabled={
-                params.row.status === "Finalizado" ||
-                params.row.status === "Cancelado"
-              }
-              sx={{
-                textTransform: "none",
-                "&.Mui-disabled": {
-                  borderColor: "transparent",
-                  color: "text.disabled",
-                },
-              }}
-              startIcon={<TbTruckReturn size={18} />}
+              fileName={`comprovante-devolucao-${params.row.id_locacao}.pdf`}
             >
-              {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"}
-            </Button>
-          </span>
-        </Tooltip>
+              {({ loading }) => (
+                <Tooltip title="Emitir comprovante de devolução">
+                  <IconButton
+                    size="small"
+                    disabled={loading}
+                    sx={{
+                      p: 0.5,
+                      color: "primary.main",
+                      "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                    }}
+                  >
+                    {loading ? (
+                      <CircularProgress size={20} />
+                    ) : (
+                      <FaPrint /> // Ícone de impressora
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
+            </PDFDownloadLink>
+          )}
+        </Box>
       ),
     },
     {
@@ -1985,9 +2207,16 @@ export default function LeasePage() {
                         InputLabelProps={{ shrink: true }}
                         required
                       />
-                      <TextField
+                      {/* <TextField
                         {...form.register("data_real_devolucao")}
                         label="Devolução Real"
+                        type="date"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      /> */}
+                      <TextField
+                        {...form.register("data_pagamento")}
+                        label="Data do pagamento"
                         type="date"
                         size="small"
                         InputLabelProps={{ shrink: true }}
@@ -2443,7 +2672,23 @@ export default function LeasePage() {
                     value={valorMulta}
                     onChange={(e) => setValorMulta(Number(e.target.value))}
                   />
-                  {/* {leaseParaDevolver &&
+                </Grid>
+
+                {leaseParaDevolver &&
+                  leaseParaDevolver.data_pagamento == null && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Data de Pagamento"
+                        type="date"
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        value={dataPagamento}
+                        onChange={(e) => setDataPagamento(e.target.value)}
+                      />
+                    </Grid>
+                  )}
+              </Grid>
+              {/* {leaseParaDevolver &&
                     new Date(dataDevolucao) >
                       new Date(leaseParaDevolver.data_prevista_devolucao) && (
                       <Typography
@@ -2455,8 +2700,6 @@ export default function LeasePage() {
                         {(leaseParaDevolver.valor_total * 0.1).toFixed(2)})
                       </Typography>
                     )} */}
-                </Grid>
-              </Grid>
 
               {leaseParaDevolver && (
                 <Box sx={{ mt: 2 }}>
@@ -2480,7 +2723,7 @@ export default function LeasePage() {
           <DialogActions>
             <Button onClick={handleCloseDevolucaoModal}>Cancelar</Button>
             <Button
-              onClick={handleConfirmarDevolucao}
+              onClick={() => handleConfirmarDevolucao()} // Envolva em arrow function
               variant="contained"
               color="primary"
             >

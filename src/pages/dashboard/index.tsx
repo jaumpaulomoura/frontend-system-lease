@@ -61,14 +61,16 @@ const chartColors = {
   available: "#2ecc71",
   rented: "#e74c3c",
   revenue: "#3498db",
+  openRevenue: "#f39c12", // Nova cor para receita em aberto
   background: "#34495e",
   divider: "#7f8c8d",
 };
+
 interface UpcomingReturn {
   id_locacao: number;
   clienteName: string;
   clienteTelefone: string;
-  data_prevista_devolucao: string;
+  data_pagamento: string;
   status: string;
 }
 
@@ -96,7 +98,7 @@ export default function OderanDashboard() {
     { field: "clienteName", headerName: "Cliente", width: 180 },
     { field: "clienteTelefone", headerName: "Telefone", width: 150 },
     {
-      field: "data_prevista_devolucao",
+      field: "data_pagamento",
       headerName: "Previsão de Devolução",
       width: 180,
 
@@ -142,7 +144,7 @@ export default function OderanDashboard() {
 
       const upcoming = allLeases
         .filter((lease) => {
-          const dueDate = new Date(lease.data_prevista_devolucao);
+          const dueDate = new Date(lease.data_pagamento);
           dueDate.setHours(0, 0, 0, 0); // zera horário para comparar apenas a data
 
           const today = new Date();
@@ -159,7 +161,7 @@ export default function OderanDashboard() {
           id_locacao: lease.id_locacao,
           clienteName: lease.cliente?.name || "",
           clienteTelefone: lease.cliente?.telefone || "",
-          data_prevista_devolucao: lease.data_prevista_devolucao,
+          data_pagamento: lease.data_pagamento,
           status: lease.status,
         }));
 
@@ -203,8 +205,8 @@ export default function OderanDashboard() {
     const clients = new Set<string>();
 
     leases.forEach((lease) => {
-      if (lease.data_prevista_devolucao) {
-        const date = new Date(lease.data_prevista_devolucao);
+      if (lease.data_pagamento) {
+        const date = new Date(lease.data_pagamento);
         months.add(`${date.getMonth() + 1}/${date.getFullYear()}`);
       }
       if (lease.cliente?.name) {
@@ -236,11 +238,10 @@ export default function OderanDashboard() {
       filteredLeases = filteredLeases.filter((lease) => {
         const monthMatch =
           selectedMonth === "all" ||
-          (lease.data_prevista_devolucao &&
-            `${
-              new Date(lease.data_prevista_devolucao).getMonth() + 1
-            }/${new Date(lease.data_prevista_devolucao).getFullYear()}` ===
-              selectedMonth);
+          (lease.data_pagamento &&
+            `${new Date(lease.data_pagamento).getMonth() + 1}/${new Date(
+              lease.data_pagamento
+            ).getFullYear()}` === selectedMonth);
 
         const clientMatch =
           selectedClient === "all" || lease.cliente?.name === selectedClient;
@@ -321,56 +322,93 @@ export default function OderanDashboard() {
         labels: ["Nenhum dado disponível"],
         datasets: [
           {
-            label: "Receita (R$)",
+            label: "Receita Paga (R$)",
             data: [0],
             backgroundColor: chartColors.revenue,
+          },
+          {
+            label: "Receita em Aberto (R$)",
+            data: [0],
+            backgroundColor: chartColors.openRevenue,
           },
         ],
       };
     }
 
-    const monthlyRevenue: Record<string, number> = {};
+    const monthlyPaidRevenue: Record<string, number> = {};
+    const monthlyOpenRevenue: Record<string, number> = {};
 
     filteredLeases.forEach((lease) => {
-      if (!lease || lease.status !== "Finalizado") return;
+      if (!lease) return;
 
-      try {
-        const date = new Date(lease.data_prevista_devolucao);
-        const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-        monthlyRevenue[monthYear] =
-          (monthlyRevenue[monthYear] || 0) + Number(lease.valor_total || 0);
-      } catch (error) {
-        console.error("Erro ao processar data:", error);
+      const valorTotal = Number(lease.valor_total || 0);
+
+      // Receita paga (com data_pagamento)
+      if (lease.data_pagamento) {
+        try {
+          const date = new Date(lease.data_pagamento);
+          const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+          monthlyPaidRevenue[monthYear] =
+            (monthlyPaidRevenue[monthYear] || 0) + valorTotal;
+        } catch (error) {
+          console.error("Erro ao processar data de pagamento:", error);
+        }
+      }
+      // Receita em aberto (sem data_pagamento mas com data_prevista_devolucao)
+      else if (lease.data_prevista_devolucao) {
+        try {
+          const date = new Date(lease.data_prevista_devolucao);
+          const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+          monthlyOpenRevenue[monthYear] =
+            (monthlyOpenRevenue[monthYear] || 0) + valorTotal;
+        } catch (error) {
+          console.error("Erro ao processar data prevista:", error);
+        }
       }
     });
 
-    const sortedMonths = Object.keys(monthlyRevenue).sort((a, b) => {
+    // Combina todos os meses únicos
+    const allMonths = [
+      ...new Set([
+        ...Object.keys(monthlyPaidRevenue),
+        ...Object.keys(monthlyOpenRevenue),
+      ]),
+    ].sort((a, b) => {
       const [aMonth, aYear] = a.split("/").map(Number);
       const [bMonth, bYear] = b.split("/").map(Number);
       return aYear - bYear || aMonth - bMonth;
     });
 
-    // Se não houver receita, mostra mensagem
-    if (sortedMonths.length === 0) {
+    if (allMonths.length === 0) {
       return {
         labels: ["Nenhuma receita encontrada"],
         datasets: [
           {
-            label: "Receita (R$)",
+            label: "Receita Paga (R$)",
             data: [0],
             backgroundColor: chartColors.revenue,
+          },
+          {
+            label: "Receita em Aberto (R$)",
+            data: [0],
+            backgroundColor: chartColors.openRevenue,
           },
         ],
       };
     }
 
     return {
-      labels: sortedMonths,
+      labels: allMonths,
       datasets: [
         {
-          label: "Receita (R$)",
-          data: sortedMonths.map((month) => monthlyRevenue[month]),
+          label: "Receita Paga (R$)",
+          data: allMonths.map((month) => monthlyPaidRevenue[month] || 0),
           backgroundColor: chartColors.revenue,
+        },
+        {
+          label: "Receita em Aberto (R$)",
+          data: allMonths.map((month) => monthlyOpenRevenue[month] || 0),
+          backgroundColor: chartColors.openRevenue,
         },
       ],
     };
@@ -407,7 +445,7 @@ export default function OderanDashboard() {
     totalStock > 0 ? Math.round((totalRented / totalStock) * 100) : 0;
 
   const monthlyRevenue = filteredData.filteredLeases
-    .filter((lease) => lease?.status === "Finalizado")
+    // .filter((lease) => lease?.status === "Finalizado")
     .reduce((sum, lease) => sum + Number(lease?.valor_total || 0), 0);
 
   // const annualRevenue = monthlyRevenue * 12;
@@ -492,7 +530,10 @@ export default function OderanDashboard() {
 
   const upcomingDueLeases = leases
     .filter((lease) => {
-      const dueDate = new Date(lease.data_prevista_devolucao);
+      // Usa data_pagamento se existir, senão data_locacao
+      const dueDate = new Date(lease.data_pagamento || lease.data_locacao);
+      if (isNaN(dueDate.getTime())) return false; // Data inválida
+
       dueDate.setHours(0, 0, 0, 0);
       return (
         lease.status === "Ativo" &&
@@ -504,12 +545,12 @@ export default function OderanDashboard() {
       id_locacao: lease.id_locacao,
       clienteName: lease.cliente?.name || "",
       clienteTelefone: lease.cliente?.telefone || "",
-      data_prevista_devolucao: lease.data_prevista_devolucao,
+      data_pagamento: lease.data_pagamento,
       status: lease.status,
     }));
   const overdueLeases = leases
     .filter((lease) => {
-      const dueDate = new Date(lease.data_prevista_devolucao);
+      const dueDate = new Date(lease.data_pagamento);
       dueDate.setHours(0, 0, 0, 0);
       return lease.status === "Ativo" && dueDate.getTime() < today.getTime();
     })
@@ -517,7 +558,7 @@ export default function OderanDashboard() {
       id_locacao: lease.id_locacao,
       clienteName: lease.cliente?.name || "",
       clienteTelefone: lease.cliente?.telefone || "",
-      data_prevista_devolucao: lease.data_prevista_devolucao,
+      data_pagamento: lease.data_pagamento,
       status: lease.status,
     }));
   return (
@@ -780,6 +821,7 @@ export default function OderanDashboard() {
             </Grid>
 
             {/* Revenue Card */}
+            {/* Revenue Card */}
             <Grid item xs={12} md={6}>
               <Paper
                 sx={{
@@ -799,17 +841,37 @@ export default function OderanDashboard() {
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid item xs={6}>
-                    <Typography variant="body1">Total</Typography>
+                    <Typography variant="body1">Receita Paga</Typography>
                     <Typography variant="h5">
-                      {formatCurrency(monthlyRevenue)}
+                      {formatCurrency(
+                        filteredData.filteredLeases
+                          .filter((lease) => lease.data_pagamento)
+                          .reduce(
+                            (sum, lease) =>
+                              sum + Number(lease.valor_total || 0),
+                            0
+                          )
+                      )}
                     </Typography>
                   </Grid>
-                  {/* <Grid item xs={6}>
-                    <Typography variant="body1">Ano</Typography>
+                  <Grid item xs={6}>
+                    <Typography variant="body1">Receita em Aberto</Typography>
                     <Typography variant="h5">
-                      {formatCurrency(annualRevenue)}
+                      {formatCurrency(
+                        filteredData.filteredLeases
+                          .filter(
+                            (lease) =>
+                              !lease.data_pagamento &&
+                              lease.data_prevista_devolucao
+                          )
+                          .reduce(
+                            (sum, lease) =>
+                              sum + Number(lease.valor_total || 0),
+                            0
+                          )
+                      )}
                     </Typography>
-                  </Grid> */}
+                  </Grid>
                 </Grid>
 
                 <Box sx={{ height: "250px" }}>
@@ -820,12 +882,17 @@ export default function OderanDashboard() {
                       maintainAspectRatio: false,
                       plugins: {
                         legend: {
-                          display: false,
+                          position: "top",
+                          labels: {
+                            color: "white",
+                          },
                         },
                         tooltip: {
                           callbacks: {
                             label: (context) =>
-                              `${formatCurrency(context.raw as number)}`,
+                              `${context.dataset.label}: ${formatCurrency(
+                                context.raw as number
+                              )}`,
                           },
                         },
                       },
@@ -846,7 +913,7 @@ export default function OderanDashboard() {
                             color: "white",
                             callback: (value) => formatCurrency(Number(value)),
                           },
-                          beginAtZero: true, // Adicione aqui
+                          beginAtZero: true,
                         },
                       },
                     }}
@@ -893,9 +960,7 @@ export default function OderanDashboard() {
                     "& .row-overdue": { backgroundColor: "#ffebee" }, // avermelhado
                   }}
                   getRowClassName={(params) => {
-                    const dueDate = new Date(
-                      params.row?.data_prevista_devolucao
-                    );
+                    const dueDate = new Date(params.row?.data_pagamento);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 

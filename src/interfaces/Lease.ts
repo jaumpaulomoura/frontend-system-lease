@@ -14,6 +14,7 @@ export interface LeaseProps {
   data_inicio: string; // Pode ser um formato ISO string
   data_prevista_devolucao: string; // Pode ser um formato ISO string
   data_real_devolucao?: string; // Pode ser um formato ISO string
+  data_pagamento: string;
   valor_total: number; // Em formato decimal
   valor_multa: number;
   status: string;
