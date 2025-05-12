@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
-// "use client";
 
 import React, {
   useCallback,
@@ -41,7 +42,6 @@ import {
   Grid,
   CircularProgress,
   InputAdornment,
-  // Paper,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { InitialContext } from "@contexts/InitialContext";
@@ -68,7 +68,6 @@ import autoTable, { UserOptions } from "jspdf-autotable";
 import { LeaseItemProps } from "@interfaces/LeaseItens";
 import { pdf } from "@react-pdf/renderer";
 import ReturnReceiptPDF from "@components/ReturnReceiptPDF";
-// import clients from "@pages/api/clients";
 
 declare module "jspdf" {
   interface jsPDF {
@@ -294,7 +293,6 @@ export default function LeasePage() {
     setLoading(true);
 
     try {
-      // Confirmação adicional para operação crítica
       const userConfirmed = window.confirm(
         "Tem certeza que deseja excluir esta locação?"
       );
@@ -325,7 +323,6 @@ export default function LeasePage() {
     }
   };
 
-  // Função para cálculo de dias (inclui o dia final)
   const calcularDiferencaDias = (
     dataInicio: string,
     dataFim: string
@@ -347,7 +344,6 @@ export default function LeasePage() {
     return diff;
   };
 
-  // Função SIMPLIFICADA - cálculo direto do valor diário
   const calcularValorLocacao = (valorDiario: number, dias: number): number => {
     console.log("[DEPURAÇÃO] Calculando valor locação:", {
       valorDiario,
@@ -364,11 +360,9 @@ export default function LeasePage() {
     return valorCalculado;
   };
 
-  // Função handleAddLease atualizada para usar o valor negociado
   const handleAddLease = () => {
     console.group("[DEPURAÇÃO] Iniciando handleAddLease");
 
-    // Verificação inicial com tratamento de tipos
     const dataInicio = form.watch("data_inicio");
     const dataFim = form.watch("data_prevista_devolucao");
 
@@ -388,7 +382,6 @@ export default function LeasePage() {
       return;
     }
 
-    // Validação adicional das datas
     try {
       new Date(dataInicio);
       new Date(dataFim);
@@ -403,7 +396,6 @@ export default function LeasePage() {
       return;
     }
 
-    // Cálculo dos dias com garantia de tipos
     const dias = calcularDiferencaDias(dataInicio, dataFim);
 
     console.log("[DEPURAÇÃO] Dados selecionados:", {
@@ -473,7 +465,6 @@ export default function LeasePage() {
     console.groupEnd();
   };
 
-  // useEffect atualizado para lidar com valores possivelmente nulos
   useEffect(() => {
     console.group("[DEPURAÇÃO] Atualizando valor total");
 
@@ -526,7 +517,6 @@ export default function LeasePage() {
   const handleCreateOrUpdate = async (data: FormData) => {
     setLoading(true);
     try {
-      // Validate lease items first
       if (leaseItems.length === 0) {
         throw new Error("Adicione pelo menos um item à locação");
       }
@@ -548,7 +538,6 @@ export default function LeasePage() {
         );
       }
 
-      // Build the payload with proper error handling
       const payload: LeaseRequestPayload = {
         ...data,
         id_locacao: editLease?.id_locacao ?? 0,
@@ -610,19 +599,15 @@ export default function LeasePage() {
       if (editLease?.id_locacao) {
         response = await patchLease(payload, editLease.id_locacao);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         response = await createLease(payload);
 
-        // Update stock status - using the correct property (stocks or patrimonio)
         await Promise.all(
           leaseItems.flatMap((item) => {
-            // Verifica se existe um patrimônio válido
             if (!item.patrimonio?.id) {
               console.error("Item sem patrimônio válido:", item);
               return [];
             }
 
-            // Cria o payload para atualizar o status do patrimônio
             return patchStock(item.patrimonio.id, { status: "Alugado" }).catch(
               (error) => {
                 console.error(
@@ -642,23 +627,19 @@ export default function LeasePage() {
       setLeaseItems([]);
       form.reset();
 
-      // Snackbar de sucesso (inferior direito)
       setSnackbar({
         open: true,
         message: "Locação salva com sucesso!",
         severity: "success",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
     } catch (error) {
       console.error("Erro ao salvar locação:", error);
 
-      // Snackbar de erro (inferior direito)
       setSnackbar({
         open: true,
         message:
           error instanceof Error ? error.message : "Erro ao salvar locação",
         severity: "error",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
     } finally {
       setLoading(false);
@@ -670,12 +651,9 @@ export default function LeasePage() {
     if (!dateString) return "";
 
     try {
-      // Usa o parser do Luxon ou date-fns se já usar essas libs
-      // Solução vanilla:
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "";
 
-      // Formata manualmente ignorando o timezone
       const day = date.getUTCDate().toString().padStart(2, "0");
       const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
       const year = date.getUTCFullYear();
@@ -710,14 +688,12 @@ export default function LeasePage() {
 
     setLoading(true);
     try {
-      // 1. Atualizar status dos itens para "Disponível"
       await Promise.all(
         leaseParaDevolver.leaseItems.map((item: LeaseItem) =>
           patchStock(item.id_patrimonio, { status: "Disponível" })
         )
       );
 
-      // 2. Atualizar a locação
       await patchLease(
         {
           id_locacao: leaseParaDevolver.id_locacao,
@@ -729,14 +705,11 @@ export default function LeasePage() {
         leaseParaDevolver.id_locacao
       );
 
-      // 3. Atualizar a lista de locações
       await fetchLeases();
 
-      // 4. Fechar modal e limpar estados
       handleCloseDevolucaoModal();
       setValorMulta(0);
 
-      // 5. Mostrar mensagem de sucesso
       setSnackbar({
         open: true,
         message:
@@ -745,14 +718,12 @@ export default function LeasePage() {
         severity: "success",
       });
 
-      // 6. Se solicitado, gerar o comprovante
       if (imprimirComprovante) {
         const pdfWindow = window.open("", "_blank");
         pdfWindow?.document.write(
           "<div style='text-align:center;margin-top:200px'><h3>Gerando comprovante...</h3></div>"
         );
 
-        // Usando react-pdf para gerar o PDF
         const pdfBlob = await pdf(
           <ReturnReceiptPDF
             lease={leaseParaDevolver}
@@ -794,21 +765,18 @@ export default function LeasePage() {
         open: true,
         message: "Nenhuma locação selecionada para cancelamento",
         severity: "warning",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Liberar os stocks (mudar status para "Disponível")
       await Promise.all(
         leaseParaCancelar.leaseItems.map((item: LeaseItem) =>
           patchStock(item.id_patrimonio, { status: "Disponível" })
         )
       );
 
-      // 2. Atualizar o status da locação para "Cancelado"
       await patchLease(
         {
           id_locacao: leaseParaCancelar.id_locacao,
@@ -818,15 +786,12 @@ export default function LeasePage() {
         leaseParaCancelar.id_locacao
       );
 
-      // 3. Atualizar a lista de locações
       await fetchLeases();
 
-      // 4. Feedback e fechar modal
       setSnackbar({
         open: true,
         message: "Locação cancelada com sucesso!",
         severity: "success",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
       handleCloseCancelamentoModal();
     } catch (error) {
@@ -837,7 +802,6 @@ export default function LeasePage() {
           error instanceof Error ? error.message : "Erro desconhecido"
         }`,
         severity: "error",
-        // anchorOrigin: { vertical: "bottom", horizontal: "right" },
       });
     } finally {
       setLoading(false);
@@ -870,7 +834,6 @@ export default function LeasePage() {
         return clienteName || `ID: ${clienteId ?? "Não especificado"}`;
       },
       renderCell: (params: any) => {
-        // Mesma lógica segura
         const clienteName = params.row.cliente?.name;
         const clienteId = params.row.cliente_id;
 
@@ -925,139 +888,24 @@ export default function LeasePage() {
       valueFormatter: (params) => formatCurrency(params),
     },
     { field: "status", headerName: "Status", width: 100 },
-    // {
-    //   field: "actions",
-    //   headerName: "Ações",
-    //   width: 120,
-    //   renderCell: (params) => (
-    //     <Box display="flex" gap={1}>
-    //       {/* Botão Editar - Corrigido para editar a locação */}
-    //       <Button
-    //         onClick={() => {
-    //           const leaseToEdit = leases.find(
-    //             (lease) => lease.id_locacao === params.row.id_locacao
-    //           );
-    //           console.log("leaseToEdit", leaseToEdit);
-    //           if (leaseToEdit) {
-    //             setEditLease(leaseToEdit);
-    //             setOpenForm(true);
-    //           }
-    //         }}
-    //       >
-    //         <MdEdit color="blue" />
-    //       </Button>
 
-    //       {/* Botão Excluir */}
-    //       <Button
-    //         title="Excluir"
-    //         onClick={() => {
-    //           setDeleteId(params.row.id_locacao);
-    //           setOpenDialog(true);
-    //         }}
-    //         sx={{ minWidth: "40px", padding: 0 }}
-    //       >
-    //         <MdDelete color="red" size={20} />
-    //       </Button>
-    //     </Box>
-    //   ),
-    // },
-    // {
-    //   field: "comprovante",
-    //   headerName: "Comprovante",
-    //   width: 120,
-    //   renderCell: (params) => {
-    //     if (params.row.status !== "Finalizado") return null;
-
-    //     return (
-    //       <PDFDownloadLink
-    //         document={
-    //           <ReturnReceiptPDF
-    //             lease={params.row}
-    //             devolutionData={{
-    //               dataDevolucao: params.row.data_real_devolucao,
-    //               valorMulta: params.row.valor_multa,
-    //             }}
-    //           />
-    //         }
-    //         fileName={`comprovante-devolucao-${params.row.id_locacao}.pdf`}
-    //       >
-    //         {({ loading }) => (
-    //           <Button
-    //             variant="outlined"
-    //             size="small"
-    //             disabled={loading}
-    //             startIcon={<FaFilePdf />}
-    //           >
-    //             {loading ? "Gerando..." : ""}
-    //           </Button>
-    //         )}
-    //       </PDFDownloadLink>
-    //     );
-    //   },
-    // },
-    // {
-    //   field: "devolucao",
-    //   headerName: "",
-    //   width: 110,
-    //   renderCell: (params) => (
-    //     <Tooltip
-    //       title={
-    //         params.row.status === "Finalizado" ||
-    //         params.row.status === "Cancelado"
-    //           ? "Locação já finalizada/cancelada"
-    //           : "Registrar devolução"
-    //       }
-    //     >
-    //       <span>
-    //         <Button
-    //           variant="outlined"
-    //           color={
-    //             params.row.status === "Finalizado" ||
-    //             params.row.status === "Cancelado"
-    //               ? "inherit" // Usar "inherit" em vez de "default"
-    //               : "secondary"
-    //           }
-    //           size="small"
-    //           onClick={(e) => {
-    //             e.stopPropagation();
-    //             handleOpenDevolucaoModal(params.row);
-    //           }}
-    //           disabled={
-    //             params.row.status === "Finalizado" ||
-    //             params.row.status === "Cancelado"
-    //           }
-    //           sx={{
-    //             textTransform: "none",
-    //             "&.Mui-disabled": {
-    //               borderColor: "transparent",
-    //               color: "text.disabled",
-    //             },
-    //           }}
-    //           startIcon={<TbTruckReturn size={18} />}
-    //         >
-    //           {params.row.status === "Finalizado" ? "Devolvido" : "Devolver"}
-    //         </Button>
-    //       </span>
-    //     </Tooltip>
-    //   ),
-    // },
     {
       field: "devolucao",
       headerName: "",
-      width: 130, // Aumente a largura para acomodar os dois botões
+      width: 130,
       renderCell: (params) => (
         <Box
           display="flex"
           alignItems="center"
           sx={{
-            gap: 0.055, // Espaçamento mínimo (2px)
+            gap: 0.055,
             "& .MuiButton-root": {
-              padding: "4px 8px", // Padding mais compacto
+              padding: "4px 8px",
               minWidth: "auto",
             },
             "& .MuiIconButton-root": {
-              padding: "4px", // Ícone mais compacto
-              marginLeft: "-6px", // Compensa o espaçamento
+              padding: "4px",
+              marginLeft: "-6px",
             },
           }}
         >
@@ -1111,8 +959,8 @@ export default function LeasePage() {
                   devolutionData={{
                     dataDevolucao:
                       params.row.data_real_devolucao ||
-                      new Date().toISOString(), // Fallback para data atual
-                    valorMulta: params.row.valor_multa || 0, // Fallback para 0 se undefined
+                      new Date().toISOString(),
+                    valorMulta: params.row.valor_multa || 0,
                   }}
                 />
               }
@@ -1129,11 +977,7 @@ export default function LeasePage() {
                       "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
                     }}
                   >
-                    {loading ? (
-                      <CircularProgress size={20} />
-                    ) : (
-                      <FaPrint /> // Ícone de impressora
-                    )}
+                    {loading ? <CircularProgress size={20} /> : <FaPrint />}
                   </IconButton>
                 </Tooltip>
               )}
@@ -1171,7 +1015,7 @@ export default function LeasePage() {
                   color: "text.disabled",
                 },
               }}
-              startIcon={<CancelIcon />} // Correct way to add an icon
+              startIcon={<CancelIcon />}
             >
               Cancelar
             </Button>
@@ -1185,8 +1029,6 @@ export default function LeasePage() {
       headerName: "Itens/Patrimônios",
       width: 100,
       renderCell: (params) => {
-        // console.log("Conteúdo completo da row:", params.row);
-        // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = useState(false);
         const items = params.row.leaseItems || [];
         const clientName = params.row.cliente?.name || "Cliente não informado";
@@ -1388,11 +1230,6 @@ export default function LeasePage() {
       headerName: "Contrato",
       width: 120,
       renderCell: (params) => {
-        // console.log(
-        //   "[PDF] Renderizando botão para locação:",
-        //   params.row.id_locacao
-        // );
-
         return (
           <PDFDownloadLink
             document={<LeaseContractPDF lease={params.row} />}
@@ -1402,11 +1239,6 @@ export default function LeasePage() {
             style={{ textDecoration: "none" }}
           >
             {({ loading, error }) => {
-              // console.log(`[PDF] Estado: loading=${loading}, error=${error}`, {
-              //   locacaoId: params.row.id_locacao,
-              //   error,
-              // });
-
               return (
                 <Tooltip
                   title={error ? "Erro ao gerar PDF" : "Gerar contrato em PDF"}
@@ -1462,20 +1294,16 @@ export default function LeasePage() {
 
   const filteredLeases = useMemo(() => {
     return leases.filter((lease) => {
-      // Filtro por ID
       const matchesId = filterIdLocacao
         ? lease.id_locacao.toString().includes(filterIdLocacao)
         : true;
 
-      // Filtro por cliente
       const matchesClient = selectedClient
         ? lease.cliente_id === selectedClient.id
         : true;
 
-      // Filtro por status
       const matchesStatus = filterStatus ? lease.status === filterStatus : true;
 
-      // Filtro por data
       const leaseDate = new Date(lease.data_inicio);
       const matchesDateStart = dateRange.start
         ? leaseDate >= new Date(dateRange.start)
@@ -1484,8 +1312,6 @@ export default function LeasePage() {
         ? leaseDate <= new Date(dateRange.end)
         : true;
 
-      // Filtro por produtos (E/OU lógico)
-      // Filtro por produtos (mantendo apenas a lógica OR)
       const matchesProducts =
         selectedProducts.length > 0
           ? lease.leaseItems?.some((item) =>
@@ -1515,7 +1341,6 @@ export default function LeasePage() {
   const generateFilteredLeasesPDF = () => {
     const doc = new jsPDF() as JsPDFWithAutoTable;
 
-    // Configuração inicial do documento
     doc.setProperties({
       title: `Relatório de Locações - ${new Date().toLocaleDateString(
         "pt-BR"
@@ -1526,7 +1351,6 @@ export default function LeasePage() {
       creator: "Sistema de Gestão",
     });
 
-    // Cabeçalho profissional
     doc.setFontSize(18);
     doc.setTextColor(40);
     doc.text("Relatório de Locações", 105, 15, { align: "center" });
@@ -1541,7 +1365,6 @@ export default function LeasePage() {
       25
     );
 
-    // Adiciona filtros aplicados
     let filtersText = "Filtros aplicados: ";
     const activeFilters = [];
 
@@ -1569,7 +1392,6 @@ export default function LeasePage() {
     doc.setFontSize(8);
     doc.text(filtersText, 14, 35, { maxWidth: 180 });
 
-    // Dados resumidos
     doc.setFontSize(10);
     doc.text(`Total de locações: ${filteredLeases.length}`, 14, 45);
     doc.text(
@@ -1580,7 +1402,6 @@ export default function LeasePage() {
       55
     );
 
-    // Tabela principal de locações
     autoTable(doc, {
       startY: 65,
       head: [["ID", "Cliente", "Início", "Término", "Valor", "Status"]],
@@ -1612,7 +1433,6 @@ export default function LeasePage() {
       },
     });
 
-    // Adiciona detalhes de cada locação
     filteredLeases.forEach((lease, index) => {
       if (index > 0) {
         doc.addPage();
@@ -1620,12 +1440,10 @@ export default function LeasePage() {
 
       let y = 20;
 
-      // Cabeçalho da locação
       doc.setFontSize(14);
       doc.text(`Locação #${lease.id_locacao}`, 14, y);
       y += 10;
 
-      // Informações básicas
       doc.setFontSize(10);
       doc.text(`Cliente: ${lease.cliente?.name || "Não informado"}`, 14, y);
       y += 7;
@@ -1656,7 +1474,6 @@ export default function LeasePage() {
       doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y + 7);
       y += 14;
 
-      // Tabela de itens
       doc.setFontSize(12);
       doc.text("Itens Alugados:", 14, y);
       y += 7;
@@ -1698,13 +1515,11 @@ export default function LeasePage() {
         y += 7;
       }
 
-      // Observações
       if (lease.observacoes) {
         doc.text(`Observações: ${lease.observacoes}`, 14, y);
       }
     });
 
-    // Rodapé em todas as páginas
     const pageCount = doc.internal.pages.length;
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -1725,7 +1540,6 @@ export default function LeasePage() {
     doc.save(`relatorio_locacoes_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  // Funções auxiliares (adicionar ao componente)
   const formatCurrency = (
     value: number | string | null | undefined
   ): string => {
@@ -1785,10 +1599,10 @@ export default function LeasePage() {
   return (
     <Box
       sx={{
-        height: "100vh", // Define a altura da tela inteira
-        backgroundColor: "#E0E0E0", // Cor de fundo global
+        height: "100vh",
+        backgroundColor: "#E0E0E0",
         display: "flex",
-        flexDirection: "column", // Garante que o conteúdo será organizado em coluna
+        flexDirection: "column",
       }}
     >
       <Layout>
@@ -1812,8 +1626,8 @@ export default function LeasePage() {
               display: "flex",
               flexDirection: "column",
               width: "100%",
-              padding: 0, // Remove o padding do Box
-              height: "calc(100vh - 64px)", // Subtrai a altura do menu, assumindo que é 64px
+              padding: 0,
+              height: "calc(100vh - 64px)",
             }}
           >
             {/* Filtro e Botões */}
@@ -1822,7 +1636,7 @@ export default function LeasePage() {
                 display: "flex",
                 justifyContent: "flex-start",
                 gap: 1,
-                padding: 0, // Define o padding interno para o Box de filtros e botões
+                padding: 0,
                 marginTop: "5px",
               }}
             >
@@ -2120,7 +1934,7 @@ export default function LeasePage() {
                         gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                         gap: 2,
                         mt: 2,
-                        alignItems: "center", // Alinha os itens verticalmente
+                        alignItems: "center",
                       }}
                     >
                       {/* Campo de Estado - Estilo igual ao TextField */}
@@ -2141,10 +1955,10 @@ export default function LeasePage() {
                         helperText={
                           form.formState.errors.estado_locacao?.message
                         }
-                        variant="outlined" // Garante o mesmo estilo do TextField normal
+                        variant="outlined"
                         sx={{
                           "& .MuiSelect-select": {
-                            padding: "8.5px 14px", // Ajuste fino para igualar ao TextField
+                            padding: "8.5px 14px",
                           },
                         }}
                       >
@@ -2295,7 +2109,6 @@ export default function LeasePage() {
                       </Typography>
                       <Autocomplete
                         options={products.filter((p) => {
-                          // Verificação de segurança para produtos
                           if (!p || typeof p.totalAvailable === "undefined") {
                             console.warn("Produto inválido encontrado:", p);
                             return false;
@@ -2304,7 +2117,6 @@ export default function LeasePage() {
                           const isAvailable = p.totalAvailable > 0;
 
                           const isAlreadyAdded = leaseItems.some((item) => {
-                            // Verificação completa da estrutura do item
                             if (!item || !item.patrimonio) {
                               console.warn("Item de locação inválido:", item);
                               return false;
@@ -2324,7 +2136,6 @@ export default function LeasePage() {
                           setSelectedStocks([]);
                           setQuantity(1);
 
-                          // Atualiza o valorNegociado baseado no período atual
                           if (newValue) {
                             setValorNegociado(
                               period === "diario"
@@ -2336,7 +2147,7 @@ export default function LeasePage() {
                                 : newValue.annual_value || 0
                             );
                           } else {
-                            setValorNegociado(0); // Reset se nenhum produto selecionado
+                            setValorNegociado(0);
                           }
                         }}
                         renderInput={(params) => (
@@ -2420,7 +2231,7 @@ export default function LeasePage() {
                               onChange={(e) => {
                                 const novoPeriodo = e.target.value as Periodo;
                                 setPeriod(novoPeriodo);
-                                // Atualiza o valor negociado quando mudar o período
+
                                 setValorNegociado(
                                   novoPeriodo === "diario"
                                     ? selectedLease?.daily_value || 0
@@ -2490,7 +2301,6 @@ export default function LeasePage() {
                         <DataGrid
                           rows={leaseItems.flatMap(
                             (item: LeaseItemProps, itemIndex: number) => {
-                              // Verificação segura do item e do patrimônio
                               if (!item || !item.patrimonio) {
                                 console.warn(
                                   "Item de locação inválido ignorado:",
@@ -2499,7 +2309,6 @@ export default function LeasePage() {
                                 return [];
                               }
 
-                              // Encontra o produto correspondente ou usa fallback
                               const product = products.find(
                                 (p) => p.id === item.patrimonio.produto.id
                               ) || {
@@ -2510,7 +2319,6 @@ export default function LeasePage() {
                                 monthly_value: 0,
                               };
 
-                              // Determina o período baseado nos valores preenchidos
                               const periodo =
                                 item.valor_negociado_diario > 0
                                   ? "diario"
@@ -2518,9 +2326,8 @@ export default function LeasePage() {
                                   ? "semanal"
                                   : item.valor_negociado_mensal > 0
                                   ? "mensal"
-                                  : "diario"; // padrão
+                                  : "diario";
 
-                              // Determina o valor unitário baseado no período
                               const valorUnitario =
                                 periodo === "diario"
                                   ? item.valor_negociado_diario
@@ -2723,7 +2530,7 @@ export default function LeasePage() {
           <DialogActions>
             <Button onClick={handleCloseDevolucaoModal}>Cancelar</Button>
             <Button
-              onClick={() => handleConfirmarDevolucao()} // Envolva em arrow function
+              onClick={() => handleConfirmarDevolucao()}
               variant="contained"
               color="primary"
             >
@@ -2778,15 +2585,14 @@ export default function LeasePage() {
         autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{
-          vertical: "bottom", // Posiciona na parte inferior
-          horizontal: "right", // Alinha à direita
+          vertical: "bottom",
+          horizontal: "right",
         }}
         sx={{
-          // Ajuste para não sobrepor o menu lateral
-          marginLeft: "240px", // Use o mesmo valor da largura do seu menu
+          marginLeft: "240px",
           "@media (max-width: 600px)": {
-            marginLeft: "0px", // Remove o margin em telas pequenas
-            bottom: "70px", // Evita conflito com mobile navigation
+            marginLeft: "0px",
+            bottom: "70px",
           },
         }}
       >
@@ -2794,8 +2600,8 @@ export default function LeasePage() {
           severity={snackbar.severity}
           sx={{
             width: "100%",
-            boxShadow: 3, // Sombra para melhor visibilidade
-            alignItems: "center", // Alinha o ícone e texto verticalmente
+            boxShadow: 3,
+            alignItems: "center",
           }}
         >
           {snackbar.message}

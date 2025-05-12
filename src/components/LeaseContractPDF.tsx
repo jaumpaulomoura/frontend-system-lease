@@ -347,14 +347,15 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
             .filter(Boolean)
             .join(", ")}
         </Text>
-        <Text style={{ fontWeight: "bold" }}> 1º </Text>
+
         <Text style={styles.clauseText}>
-          A entrega somente será considerada efetivada após verificação e
-          aceitação expressa do estado do equipamento por ambas as partes,
-          conforme disposto na Cláusula 5ª.
+          <Text style={{ fontWeight: "bold" }}> 1º </Text>A entrega somente será
+          considerada efetivada após verificação e aceitação expressa do estado
+          do equipamento por ambas as partes, conforme disposto na Cláusula 5ª.
         </Text>
-        <Text style={{ fontWeight: "bold" }}> 2º </Text>
+
         <Text style={styles.clauseText}>
+          <Text style={{ fontWeight: "bold" }}> 2º </Text>
           Quaisquer custos adicionais decorrentes de alteração no endereço de
           entrega após a assinatura deste contrato serão integralmente
           suportados pelo LOCATÁRIO.
@@ -368,23 +369,8 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
           período de {days} ({numberToWords(days)}) dias, no valor de{" "}
           {formatCurrency(totalValue)} ({numberToWords(Math.floor(totalValue))}{" "}
           reais), computado até o dia anterior ao da devolução. O pagamento será
-          efetuado:
-        </Text>
-
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>
-            {" "}
-            <Text style={{ marginRight: 5 }}>•</Text> No final da locação,{" "}
-          </Text>
-          <Text>se esta não exceder 30 (trinta) dias; ou</Text>
-        </Text>
-
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>
-            {" "}
-            <Text style={{ marginRight: 5 }}>•</Text> No trigésimo dia,{" "}
-          </Text>
-          <Text>para locações que excederem esse período.</Text>
+          efetuado no final da locação, se esta não exceder 30 (trinta) dias ou
+          no trigésimo dia, para locações que excederem esse período.
         </Text>
 
         <Text style={styles.clauseText}>

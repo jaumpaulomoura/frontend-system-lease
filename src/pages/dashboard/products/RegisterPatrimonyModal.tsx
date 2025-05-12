@@ -8,6 +8,13 @@ import {
   Button,
   Snackbar,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRowParams } from "@mui/x-data-grid";
 import { useForm, Controller } from "react-hook-form";
@@ -32,13 +39,17 @@ interface FormData {
   numero_patrimonio?: string;
 }
 
+interface PatrimonyItem {
+  numero_patrimonio: string;
+  editable: boolean;
+}
+
 export default function RegisterPatrimonyModal({
   open,
   onClose,
   product,
   stockData = [],
 }: RegisterPatrimonyModalProps) {
-  // Formulário principal
   const {
     control,
     handleSubmit,
@@ -49,9 +60,9 @@ export default function RegisterPatrimonyModal({
     mode: "onChange",
   });
 
-  // Estados do componente
   const [loading, setLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [incidentModalOpen, setIncidentModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StockProps | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -60,31 +71,75 @@ export default function RegisterPatrimonyModal({
     "success"
   );
   const [stock, setStock] = useState<StockProps[]>(stockData || []);
+  const [generatedPatrimonies, setGeneratedPatrimonies] = useState<
+    PatrimonyItem[]
+  >([]);
+  const [formData, setFormData] = useState<FormData | null>(null);
 
-  // Atualiza o estado quando stockData muda
   useEffect(() => {
     setStock(stockData || []);
   }, [stockData]);
 
-  // Adiciona novos itens ao estoque
-  const onSubmit = async (data: FormData) => {
+  function getNextPatrimonyNumber(stock: StockProps[] | undefined): number {
+    if (!stock) return 1;
+
+    const sequentials = stock
+      .map((item) => {
+        if (!item.numero_patrimonio) return 0;
+
+        const match = item.numero_patrimonio.match(/^PAT-(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num) => !isNaN(num));
+
+    const maxSequential = Math.max(...sequentials, 0);
+    return maxSequential + 1;
+  }
+
+  const generatePatrimonies = (data: FormData) => {
     if (!product) return;
+
+    const startNumber = getNextPatrimonyNumber(product.stock);
+    const newPatrimonies: PatrimonyItem[] = Array.from(
+      { length: data.quantity },
+      (_, index) => ({
+        numero_patrimonio: `PAT-${startNumber + index}`,
+        editable: false,
+      })
+    );
+
+    setGeneratedPatrimonies(newPatrimonies);
+    setFormData(data);
+    setConfirmModalOpen(true);
+  };
+
+  const handleEditPatrimony = (index: number) => {
+    const updatedPatrimonies = [...generatedPatrimonies];
+    updatedPatrimonies[index].editable = !updatedPatrimonies[index].editable;
+    setGeneratedPatrimonies(updatedPatrimonies);
+  };
+
+  const handlePatrimonyChange = (index: number, value: string) => {
+    const updatedPatrimonies = [...generatedPatrimonies];
+    updatedPatrimonies[index].numero_patrimonio = value;
+    setGeneratedPatrimonies(updatedPatrimonies);
+  };
+
+  const confirmPatrimonies = async () => {
+    if (!product || !formData) return;
     setLoading(true);
 
     try {
-      const stockItems: StockProps[] = Array.from(
-        { length: data.quantity },
-        (_, index) => ({
-          id_produto: product.id,
-          numero_patrimonio: `PAT-${product.id}-${index + 1}-${Date.now()}`,
-          nota_fiscal: data.nfNumber,
-          valor_pago: data.value,
-          status: "Disponível",
-          observacoes: `Adicionado em ${new Date().toLocaleDateString()}`,
-          id: 0,
-          produto: product,
-        })
-      );
+      const stockItems: StockProps[] = generatedPatrimonies.map((item) => ({
+        id_produto: product.id,
+        numero_patrimonio: item.numero_patrimonio,
+        nota_fiscal: formData.nfNumber,
+        valor_pago: formData.value,
+        status: "Disponível",
+        observacoes: `Adicionado em ${new Date().toLocaleDateString()}`,
+        id: 0,
+        produto: product,
+      }));
 
       const newStockItems = await Promise.all(
         stockItems.map((item) => createStock(item))
@@ -92,20 +147,24 @@ export default function RegisterPatrimonyModal({
       setStock((prevStock) => [...prevStock, ...newStockItems]);
 
       showSnackbar(
-        `${data.quantity} itens adicionados ao estoque com sucesso!`,
+        `${formData.quantity} itens adicionados ao estoque com sucesso!`,
         "success"
       );
       reset();
-      setTimeout(() => setAddModalOpen(false), 500);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      showSnackbar("Erro ao adicionar itens ao estoque.", "error");
+      setConfirmModalOpen(false);
+      setAddModalOpen(false);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      showSnackbar(
+        `Erro ao adicionar itens ao estoque: ${errorMessage}`,
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Atualiza status do item (roubado/danificado)
   const handleUpdateStatus = async (status: "Roubado" | "Danificado") => {
     if (!selectedItem) return;
     setLoading(true);
@@ -129,22 +188,24 @@ export default function RegisterPatrimonyModal({
         "success"
       );
       setIncidentModalOpen(false);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      showSnackbar("Erro ao atualizar status do item", "error");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      showSnackbar(
+        `Erro ao atualizar status do item: ${errorMessage}`,
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Mostra feedback ao usuário
   const showSnackbar = (message: string, severity: "success" | "error") => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
-  // Configuração das colunas da tabela
   const columns: GridColDef[] = [
     {
       field: "numero_patrimonio",
@@ -160,12 +221,6 @@ export default function RegisterPatrimonyModal({
       headerName: "Valor (R$)",
       flex: 1,
       type: "number",
-      // valueFormatter: (params) => {
-      //   return params.toLocaleString("pt-BR", {
-      //     style: "currency",
-      //     currency: "BRL",
-      //   });
-      // },
     },
     {
       field: "status",
@@ -198,7 +253,6 @@ export default function RegisterPatrimonyModal({
     },
   ];
 
-  // Estilo condicional para as linhas
   const getRowClassName = (params: GridRowParams) => {
     return `status-row-${params.row.status.toLowerCase()}`;
   };
@@ -232,11 +286,7 @@ export default function RegisterPatrimonyModal({
         <DialogContent sx={{ paddingTop: 3 }}>
           {stock.length === 0 ? (
             <div
-              style={{
-                textAlign: "center",
-                padding: "40px 0",
-                color: "#666",
-              }}
+              style={{ textAlign: "center", padding: "40px 0", color: "#666" }}
             >
               <p>Nenhum item registrado no estoque</p>
               <Button
@@ -261,23 +311,14 @@ export default function RegisterPatrimonyModal({
                 },
               }}
               sx={{
-                "& .status-row-disponível": {
-                  bgcolor: "#e8f5e9",
-                },
-                "& .status-row-roubado": {
-                  bgcolor: "#ffebee",
-                },
-                "& .status-row-danificado": {
-                  bgcolor: "#fff8e1",
-                },
+                "& .status-row-disponível": { bgcolor: "#e8f5e9" },
+                "& .status-row-roubado": { bgcolor: "#ffebee" },
+                "& .status-row-danificado": { bgcolor: "#fff8e1" },
                 "& .status-disponível": {
                   color: "#2e7d32",
                   fontWeight: "bold",
                 },
-                "& .status-roubado": {
-                  color: "#d32f2f",
-                  fontWeight: "bold",
-                },
+                "& .status-roubado": { color: "#d32f2f", fontWeight: "bold" },
                 "& .status-danificado": {
                   color: "#ff9800",
                   fontWeight: "bold",
@@ -376,12 +417,93 @@ export default function RegisterPatrimonyModal({
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit(onSubmit)}
+            onClick={handleSubmit(generatePatrimonies)}
             variant="contained"
             color="primary"
             disabled={loading}
           >
-            {loading ? "Salvando..." : "Confirmar"}
+            {loading ? "Gerando..." : "Gerar Patrimônios"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Confirmação de Patrimônios */}
+      <Dialog
+        open={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{ bgcolor: "#f5f5f5", borderBottom: "1px solid #ddd" }}
+        >
+          Confirme os Números de Patrimônio
+        </DialogTitle>
+        <DialogContent sx={{ paddingTop: 3 }}>
+          <TableContainer component={Paper} sx={{ marginBottom: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                  <TableCell>Item</TableCell>
+                  <TableCell>Número de Patrimônio</TableCell>
+                  <TableCell>Ações</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {generatedPatrimonies.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>
+                      {item.editable ? (
+                        <TextField
+                          value={item.numero_patrimonio}
+                          onChange={(e) =>
+                            handlePatrimonyChange(index, e.target.value)
+                          }
+                          size="small"
+                          fullWidth
+                        />
+                      ) : (
+                        <span style={{ fontFamily: "monospace" }}>
+                          {item.numero_patrimonio}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleEditPatrimony(index)}
+                      >
+                        {item.editable ? "Confirmar" : "Editar"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Alert severity="info" sx={{ marginBottom: 2 }}>
+            Revise os números de patrimônio gerados. Você pode editar
+            individualmente antes de confirmar a inserção no estoque.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ padding: 2, borderTop: "1px solid #ddd" }}>
+          <Button
+            onClick={() => setConfirmModalOpen(false)}
+            variant="outlined"
+            disabled={loading}
+          >
+            Voltar
+          </Button>
+          <Button
+            onClick={confirmPatrimonies}
+            variant="contained"
+            color="primary"
+            disabled={loading}
+          >
+            {loading ? "Salvando..." : "Confirmar Patrimônios"}
           </Button>
         </DialogActions>
       </Dialog>
