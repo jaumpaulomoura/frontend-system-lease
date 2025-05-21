@@ -524,7 +524,15 @@ export default function ClientPage() {
     { sigla: "TO", nome: "Tocantins" },
   ];
   const capitalizeWords = (str: string) =>
-    str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+    str
+      .toLowerCase()
+      .split(/\s+/)
+      .map((word) => {
+        if (word.length === 0) return "";
+        const [first, ...rest] = [...word];
+        return first.toLocaleUpperCase() + rest.join("");
+      })
+      .join(" ");
   return (
     <Box
       sx={{
@@ -913,9 +921,24 @@ export default function ClientPage() {
                     {...form.register("cep")}
                     label="CEP"
                     fullWidth
+                    required
                     margin="normal"
                     error={!!form.formState.errors.cep}
                     helperText={form.formState.errors.cep?.message}
+                    variant="outlined"
+                    inputProps={{
+                      maxLength: 9,
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+                      const formattedValue = value.replace(
+                        /^(\d{5})(\d)/,
+                        "$1-$2"
+                      );
+                      form.setValue("cep", formattedValue, {
+                        shouldValidate: true,
+                      });
+                    }}
                   />
                 </Grid>
               </Grid>
