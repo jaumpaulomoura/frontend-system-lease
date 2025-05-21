@@ -34,7 +34,7 @@ export async function createClient(data: Props): Promise<ClientProps> {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data.message);
+      throw error; // ← jogue o erro original (com status/message/etc)
     }
 
     throw new Error(`Unexpected error ocurred ${error}`);

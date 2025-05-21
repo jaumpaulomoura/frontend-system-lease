@@ -40,6 +40,7 @@ import Layout from "@components/Layout";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getLeaseList } from "@services/getLeaseList";
+import axios from "axios";
 export type FormData = {
   id?: number;
   name: string;
@@ -286,20 +287,65 @@ export default function ClientPage() {
       setEditClient(null);
     } catch (error) {
       console.error("Erro ao criar/atualizar cliente:", error);
+
+      if (axios.isAxiosError(error)) {
+        const response = error.response;
+
+        // 🔒 Erro de autenticação
+        if (response?.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Você não está autenticado. Faça login novamente.",
+            severity: "error",
+          });
+          return;
+        }
+
+        // 📛 CPF/CNPJ duplicado
+        if (response?.data?.error?.includes("CPF/CNPJ já está em uso")) {
+          setSnackbar({
+            open: true,
+            message: "Este CPF ou CNPJ já está cadastrado.",
+            severity: "warning",
+          });
+          return;
+        }
+
+        // ⚠️ Campos obrigatórios faltando
+        if (response?.data?.error?.includes("Campos obrigatórios faltando")) {
+          const missing =
+            response?.data?.missingFields?.join(", ") ||
+            "alguns campos obrigatórios";
+          setSnackbar({
+            open: true,
+            message: `Preencha os seguintes campos obrigatórios: ${missing}`,
+            severity: "warning",
+          });
+          return;
+        }
+
+        // ❌ Outro erro vindo do backend
+        setSnackbar({
+          open: true,
+          message: `Erro ao salvar cliente: ${
+            response?.data?.error || "Erro desconhecido"
+          }`,
+          severity: "error",
+        });
+        return;
+      }
+
+      // ❓ Erro inesperado fora do axios
       setSnackbar({
         open: true,
-        message:
-          "Erro ao salvar cliente: " +
-          (error instanceof Error ? error.message : "Erro desconhecido"),
+        message: "Erro inesperado ao salvar cliente.",
         severity: "error",
       });
-
-      // Mantém os dados no formulário em caso de erro
-      form.reset(data);
     } finally {
       setLoading(false);
     }
   };
+
   const formatCpfCnpj = (value: string) => {
     const rawValue = value.replace(/\D/g, "");
 
