@@ -358,7 +358,7 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
         </Text>
         <Text style={{ fontWeight: "bold" }}>
           {" "}
-          Endereço de entrega:{" "}
+          {/* Endereço de entrega:{" "}*/}
           <Text style={[styles.clauseText, { fontStyle: "italic" }]}>
             {[
               lease.rua_locacao || "NÃO INFORMADO",
