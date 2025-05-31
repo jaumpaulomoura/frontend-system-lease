@@ -496,7 +496,7 @@ export default function LeasePage() {
       }, 0);
 
       console.log("[DEPURAÇÃO] Novo valor total calculado:", novoTotal);
-      form.setValue("valor_total", novoTotal);
+      form.setValue("valor_total", Number(novoTotal.toFixed(2)));
     } else {
       console.log("[DEPURAÇÃO] Condições não atendidas para cálculo do total");
     }
@@ -2048,18 +2048,6 @@ export default function LeasePage() {
                       <TextField
                         {...form.register("valor_total")}
                         label="Valor Total"
-                        value={leaseItems
-                          .reduce((total, item) => {
-                            return (
-                              total +
-                              (item.periodo === "diario"
-                                ? Number(item.valor_negociado_diario)
-                                : item.periodo === "semanal"
-                                ? Number(item.valor_negociado_semanal)
-                                : Number(item.valor_negociado_mensal))
-                            );
-                          }, 0)
-                          .toFixed(2)}
                         InputProps={{
                           readOnly: true,
                           startAdornment: (
@@ -2067,6 +2055,7 @@ export default function LeasePage() {
                           ),
                         }}
                       />
+
                       {/* <TextField
                         {...form.register("status")}
                         label="Status"

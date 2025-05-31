@@ -663,6 +663,11 @@ export default function ProductPage() {
               margin="normal"
               {...form.register("daily_value")}
               type="number"
+              inputProps={{ step: "0.000001" }}
+              onBlur={(e) => {
+                const value = parseFloat(e.target.value).toFixed(6);
+                form.setValue("daily_value", parseFloat(value));
+              }}
               error={!!form.formState.errors.daily_value}
               helperText={form.formState.errors.daily_value?.message}
             />
@@ -672,6 +677,11 @@ export default function ProductPage() {
               margin="normal"
               {...form.register("weekly_value")}
               type="number"
+              inputProps={{ step: "0.000001" }}
+              onBlur={(e) => {
+                const value = parseFloat(e.target.value).toFixed(6);
+                form.setValue("weekly_value", parseFloat(value));
+              }}
               error={!!form.formState.errors.weekly_value}
               helperText={form.formState.errors.weekly_value?.message}
             />
@@ -681,6 +691,11 @@ export default function ProductPage() {
               margin="normal"
               {...form.register("monthly_value")}
               type="number"
+              inputProps={{ step: "0.000001" }}
+              onBlur={(e) => {
+                const value = parseFloat(e.target.value).toFixed(6);
+                form.setValue("monthly_value", parseFloat(value));
+              }}
               error={!!form.formState.errors.monthly_value}
               helperText={form.formState.errors.monthly_value?.message}
             />
@@ -690,6 +705,11 @@ export default function ProductPage() {
               margin="normal"
               {...form.register("annual_value")}
               type="number"
+              inputProps={{ step: "0.000001" }}
+              onBlur={(e) => {
+                const value = parseFloat(e.target.value).toFixed(6);
+                form.setValue("annual_value", parseFloat(value));
+              }}
               error={!!form.formState.errors.annual_value}
               helperText={form.formState.errors.annual_value?.message}
             />
