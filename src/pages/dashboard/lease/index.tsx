@@ -1385,54 +1385,54 @@ export default function LeasePage() {
       25
     );
 
-    let filtersText = "Filtros aplicados: ";
-    const activeFilters = [];
+    // let filtersText = "Filtros aplicados: ";
+    // const activeFilters = [];
 
-    if (filterIdLocacao) activeFilters.push(`ID: ${filterIdLocacao}`);
-    if (selectedClient) activeFilters.push(`Cliente: ${selectedClient.name}`);
-    if (filterStatus) activeFilters.push(`Status: ${filterStatus}`);
-    if (dateRange.start || dateRange.end) {
-      activeFilters.push(
-        `Período: ${dateRange.start ? formatDate(dateRange.start) : ""} a ${
-          dateRange.end ? formatDate(dateRange.end) : ""
-        }`
-      );
-    }
-    if (selectedProducts.length > 0) {
-      activeFilters.push(
-        `Produtos: ${selectedProducts.map((p) => p.name).join(", ")}`
-      );
-    }
+    // if (filterIdLocacao) activeFilters.push(`ID: ${filterIdLocacao}`);
+    // if (selectedClient) activeFilters.push(`Cliente: ${selectedClient.name}`);
+    // if (filterStatus) activeFilters.push(`Status: ${filterStatus}`);
+    // if (dateRange.start || dateRange.end) {
+    //   activeFilters.push(
+    //     `Período: ${dateRange.start ? formatDate(dateRange.start) : ""} a ${
+    //       dateRange.end ? formatDate(dateRange.end) : ""
+    //     }`
+    //   );
+    // }
+    // if (selectedProducts.length > 0) {
+    //   activeFilters.push(
+    //     `Produtos: ${selectedProducts.map((p) => p.name).join(", ")}`
+    //   );
+    // }
 
-    filtersText +=
-      activeFilters.length > 0
-        ? activeFilters.join(" | ")
-        : "Nenhum filtro aplicado";
+    // filtersText +=
+    //   activeFilters.length > 0
+    //     ? activeFilters.join(" | ")
+    //     : "Nenhum filtro aplicado";
 
     doc.setFontSize(8);
-    doc.text(filtersText, 14, 35, { maxWidth: 180 });
+    // doc.text(filtersText, 14, 35, { maxWidth: 180 });
 
     doc.setFontSize(10);
-    doc.text(`Total de locações: ${filteredLeases.length}`, 14, 45);
-    doc.text(
-      `Valor total: ${formatCurrency(
-        filteredLeases.reduce((sum, lease) => sum + lease.valor_total, 0)
-      )}`,
-      14,
-      55
-    );
+    // doc.text(`Total de locações: ${filteredLeases.length}`, 14, 45);
+    // doc.text(
+    //   `Valor total: ${formatCurrency(
+    //     filteredLeases.reduce((sum, lease) => sum + lease.valor_total, 0)
+    //   )}`,
+    //   14,
+    //   55
+    // );
 
     autoTable(doc, {
       startY: 65,
-      head: [["ID", "Cliente", "Início", "Término", "Valor", "Status"]],
-      body: filteredLeases.map((lease) => [
-        lease.id_locacao,
-        lease.cliente?.name || "Não informado",
-        formatDate(lease.data_inicio),
-        formatDate(lease.data_prevista_devolucao),
-        formatCurrency(lease.valor_total),
-        lease.status,
-      ]),
+      // head: [["ID", "Cliente", "Início", "Término", "Valor", "Status"]],
+      // body: filteredLeases.map((lease) => [
+      //   lease.id_locacao,
+      //   lease.cliente?.name || "Não informado",
+      //   formatDate(lease.data_inicio),
+      //   formatDate(lease.data_prevista_devolucao),
+      //   formatCurrency(lease.valor_total),
+      //   lease.status,
+      // ]),
       headStyles: {
         fillColor: [41, 128, 185],
         textColor: 255,

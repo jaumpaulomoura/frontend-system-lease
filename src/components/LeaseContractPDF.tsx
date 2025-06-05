@@ -10,7 +10,11 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import { LeaseProps } from "@interfaces/Lease";
-
+type GroupedItem = {
+  productName: string;
+  quantity: number;
+  valorTotal: number;
+};
 // Registrar fontes
 Font.register({
   family: "Times-Roman",
@@ -207,6 +211,7 @@ const numberToWords = (num: number): string => {
 };
 
 const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
+  console.log(lease);
   if (!lease) {
     return (
       <Document>
@@ -229,6 +234,38 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
         )
       : 0;
   const totalValue = lease.valor_total || 0;
+
+  function parseToNumber(value: string | number | undefined | null): number {
+    return Number(value) || 0;
+  }
+
+  const groupedItems = lease.leaseItems?.reduce<Record<string, GroupedItem>>(
+    (acc, item) => {
+      const productName = item.patrimonio?.produto?.name || "-";
+
+      const valorTotalPorItem =
+        parseToNumber(item.valor_negociado_diario) +
+        parseToNumber(item.valor_negociado_semanal) +
+        parseToNumber(item.valor_negociado_mensal) +
+        parseToNumber(item.valor_negociado_anual);
+
+      if (!acc[productName]) {
+        acc[productName] = {
+          productName,
+          quantity: 0,
+          valorTotal: 0,
+        };
+      }
+
+      acc[productName].quantity += 1;
+      acc[productName].valorTotal += valorTotalPorItem;
+
+      return acc;
+    },
+    {}
+  );
+
+  const groupedArray = Object.values(groupedItems);
 
   return (
     <Document>
@@ -267,15 +304,18 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
           <Text style={{ fontWeight: "bold", marginBottom: 4 }}>LOCADORA:</Text>
           <Text>
             <Text style={{ fontWeight: "bold" }}>Nome: </Text>
-            <Text>Loc Fran</Text>
+            <Text>Ferreira aluguel de máquinas para construção civil</Text>
           </Text>
           <Text>
             <Text style={{ fontWeight: "bold" }}>CNPJ: </Text>
-            <Text>00.000.000/0001-00</Text>
+            <Text>51.101.682/0001-60</Text>
           </Text>
           <Text>
             <Text style={{ fontWeight: "bold" }}>Endereço: </Text>
-            <Text>RUA A, 123, JARDIM ABC – CEP: 14.000-000 – FRANCA/SP</Text>
+            <Text>
+              Rua Jorge Tabah, 2950, Jardim Angela Rosa – CEP: 14.403-615 –
+              Franca/SP
+            </Text>
           </Text>
 
           {/* LOCATÁRIO */}
@@ -323,26 +363,16 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCell}>Equipamento</Text>
-            <Text style={styles.tableCell}>Patrimônio</Text>
-            <Text style={styles.tableCell}>Valor Diário</Text>
-            <Text style={styles.tableCell}>Período (dias)</Text>
+            <Text style={styles.tableCell}>Qtd</Text>
             <Text style={styles.tableCell}>Valor Total</Text>
           </View>
 
-          {lease.leaseItems?.map((item, index) => (
+          {groupedArray.map((item, index) => (
             <View style={styles.tableRow} key={index}>
+              <Text style={styles.tableCell}>{item.productName}</Text>
+              <Text style={styles.tableCell}>{item.quantity}</Text>
               <Text style={styles.tableCell}>
-                {item.patrimonio?.produto?.name || "-"}
-              </Text>
-              <Text style={styles.tableCell}>
-                {item.patrimonio?.numero_patrimonio || "-"}
-              </Text>
-              <Text style={styles.tableCell}>
-                {formatCurrency(item.valor_negociado_diario)}
-              </Text>
-              <Text style={styles.tableCell}>{days}</Text>
-              <Text style={styles.tableCell}>
-                {formatCurrency(item.valor_negociado_diario * days)}
+                {formatCurrency(item.valorTotal)}
               </Text>
             </View>
           ))}
