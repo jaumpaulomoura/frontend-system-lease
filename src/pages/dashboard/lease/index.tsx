@@ -1291,7 +1291,27 @@ export default function LeasePage() {
       disableColumnMenu: true,
     },
   ];
+  const [diasLocacao, setDiasLocacao] = useState(0);
 
+  const calcularDias = () => {
+    const inicio = form.watch("data_inicio");
+    const devolucao = form.watch("data_prevista_devolucao");
+
+    if (inicio && devolucao) {
+      // Convertendo as strings para Date e depois para timestamp
+      const inicioDate = new Date(inicio).getTime();
+      const devolucaoDate = new Date(devolucao).getTime();
+
+      // Verificando se as conversões foram bem sucedidas
+      if (!isNaN(inicioDate) && !isNaN(devolucaoDate)) {
+        const diffTime = devolucaoDate - inicioDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setDiasLocacao(diffDays);
+        return;
+      }
+    }
+    setDiasLocacao(0);
+  };
   const filteredLeases = useMemo(() => {
     return leases.filter((lease) => {
       const matchesId = filterIdLocacao
@@ -2013,6 +2033,14 @@ export default function LeasePage() {
                         InputLabelProps={{ shrink: true }}
                         required
                       />
+                      {/* <TextField
+                          {...form.register("data_prevista_devolucao")}
+                          label="Previsão Devolução"
+                          type="date"
+                          size="small"
+                          InputLabelProps={{ shrink: true }}
+                          required
+                        /> */}
                       <TextField
                         {...form.register("data_prevista_devolucao")}
                         label="Previsão Devolução"
@@ -2020,6 +2048,20 @@ export default function LeasePage() {
                         size="small"
                         InputLabelProps={{ shrink: true }}
                         required
+                        onChange={(e) => {
+                          form.setValue(
+                            "data_prevista_devolucao",
+                            e.target.value
+                          );
+                          calcularDias();
+                        }}
+                        helperText={
+                          diasLocacao > 0
+                            ? `Período de ${diasLocacao} dia${
+                                diasLocacao !== 1 ? "s" : ""
+                              }`
+                            : undefined
+                        }
                       />
                       {/* <TextField
                         {...form.register("data_real_devolucao")}
@@ -2236,10 +2278,12 @@ export default function LeasePage() {
                                 Diário (R$ {selectedLease?.daily_value || 0})
                               </MenuItem>
                               <MenuItem value="semanal">
-                                Semanal (R$ {selectedLease?.weekly_value || 0})
+                                Semanal (R${" "}
+                                {(selectedLease?.daily_value || 0) * 7})
                               </MenuItem>
                               <MenuItem value="mensal">
-                                Mensal (R$ {selectedLease?.monthly_value || 0})
+                                Mensal (R${" "}
+                                {(selectedLease?.daily_value || 0) * 30})
                               </MenuItem>
                               <MenuItem value="anual">
                                 Anual (R$ {selectedLease?.annual_value || 0})

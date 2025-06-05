@@ -68,6 +68,13 @@ export default function ProductPage() {
   const [filterActive, setFilterActive] = useState<boolean | "all">("all");
   const [openPatrimonyModal, setOpenPatrimonyModal] = useState(false);
   const [stockData, setStockData] = useState<StockProps[] | null>(null);
+  // const [displayValueWeekly, setDisplayValueWeekly] = useState("");
+  // const [displayValueMonthly, setDisplayValueMonthly] = useState("");
+  const [displayValues, setDisplayValues] = useState({
+    weekly: "",
+    monthly: "",
+  });
+
   const [selectedProduct, setSelectedProduct] = useState<ProductProps | null>(
     null
   );
@@ -86,8 +93,16 @@ export default function ProductPage() {
     setLoading(true);
     try {
       const data = await getProductList();
-      console.log(data);
-      setProducts(data);
+
+      // Exemplo: multiplica daily_value * 7 para cada produto e adiciona em weekly_value
+      const dataWithWeekly = data.map((product) => ({
+        ...product,
+        // weekly_value: product.weekly_value ? product.weekly_value * 7 : 0,
+        // monthly_value: product.monthly_value ? product.monthly_value * 30 : 0,
+      }));
+
+      console.log(dataWithWeekly);
+      setProducts(dataWithWeekly);
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
     } finally {
@@ -404,14 +419,25 @@ export default function ProductPage() {
       headerName: "Valor Semanal",
       width: 120,
       type: "number",
-      // valueFormatter: (params) => (params ? `R$ ${params.toFixed(2)}` : "N/A"),
+      valueFormatter: (params) => {
+        // Multiplica por 2 por exemplo
+        const val = params;
+        if (val == null) return "N/A";
+        return `R$ ${(val * 7).toFixed(2)}`;
+      },
     },
     {
       field: "monthly_value",
       headerName: "Valor Mensal",
       width: 100,
       type: "number",
+      valueFormatter: (params) => {
+        const val = params;
+        if (val == null) return "N/A";
+        return `R$ ${(val * 30).toFixed(2)}`;
+      },
     },
+
     {
       field: "annual_value",
       headerName: "Valor Anual",
@@ -455,7 +481,25 @@ export default function ProductPage() {
 
     return nameMatch && activeMatch && marcaMatch;
   });
+  useEffect(() => {
+    if (editProduct) {
+      form.reset({
+        ...editProduct,
+        // Valores reais do banco (já divididos)
+        daily_value: editProduct.daily_value ?? null,
+      });
 
+      // Converte para valores cheios na exibição
+      setDisplayValues({
+        weekly: editProduct.weekly_value
+          ? (editProduct.weekly_value * 7).toFixed(2)
+          : "",
+        monthly: editProduct.monthly_value
+          ? (editProduct.monthly_value * 30).toFixed(2)
+          : "",
+      });
+    }
+  }, [editProduct, form]);
   const handleAddPatrimony = async (
     params: GridRenderCellParams<ProductProps>
   ) => {
@@ -474,6 +518,7 @@ export default function ProductPage() {
   };
   const capitalizeWords = (str: string) =>
     str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+
   return (
     <Box
       sx={{
@@ -672,33 +717,43 @@ export default function ProductPage() {
               helperText={form.formState.errors.daily_value?.message}
             />
             <TextField
-              label="Valor Semanal"
+              label="Valor Semanal (Total)"
               fullWidth
               margin="normal"
-              {...form.register("weekly_value")}
-              type="number"
-              inputProps={{ step: "0.000001" }}
-              onBlur={(e) => {
-                const value = parseFloat(e.target.value).toFixed(6);
-                form.setValue("weekly_value", parseFloat(value));
+              value={displayValues.weekly}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDisplayValues((prev) => ({ ...prev, weekly: value }));
+
+                // Atualiza o valor dividido no form
+                if (value) {
+                  form.setValue("weekly_value", parseFloat(value) / 7);
+                } else {
+                  form.setValue("weekly_value", null);
+                }
               }}
-              error={!!form.formState.errors.weekly_value}
-              helperText={form.formState.errors.weekly_value?.message}
+              type="number"
             />
+
             <TextField
-              label="Valor Mensal"
+              label="Valor Mensal (Total)"
               fullWidth
               margin="normal"
-              {...form.register("monthly_value")}
-              type="number"
-              inputProps={{ step: "0.000001" }}
-              onBlur={(e) => {
-                const value = parseFloat(e.target.value).toFixed(6);
-                form.setValue("monthly_value", parseFloat(value));
+              value={displayValues.monthly}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDisplayValues((prev) => ({ ...prev, monthly: value }));
+
+                // Atualiza o valor dividido no form
+                if (value) {
+                  form.setValue("monthly_value", parseFloat(value) / 30);
+                } else {
+                  form.setValue("monthly_value", null);
+                }
               }}
-              error={!!form.formState.errors.monthly_value}
-              helperText={form.formState.errors.monthly_value?.message}
+              type="number"
             />
+
             <TextField
               label="Valor Anual"
               fullWidth
