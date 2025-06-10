@@ -3,7 +3,7 @@ import { StockProps } from "./Stock";
 export interface ProductProps {
   id: number;
   name: string;
-  marca: string;
+  marca?: string;
   description?: string;
   daily_value?: number | null;
   weekly_value?: number | null;
