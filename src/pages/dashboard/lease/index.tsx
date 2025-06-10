@@ -106,6 +106,7 @@ interface LeaseRequestPayload {
   data_pagamento?: string;
   valor_total: number;
   valor_multa: number;
+  valor_frete: number;
   status: string;
   observacoes?: string | null;
   leaseItems: Array<{
@@ -136,6 +137,7 @@ export type FormData = {
   data_pagamento?: string | null;
   valor_total: number;
   valor_multa: number;
+  valor_frete: number;
   status: string;
   observacoes?: string | null;
 };
@@ -212,6 +214,7 @@ export default function LeasePage() {
       data_pagamento: "",
       valor_total: 0,
       valor_multa: 0,
+      valor_frete: 0,
       status: "Ativo",
       observacoes: "",
     },
@@ -570,6 +573,7 @@ export default function LeasePage() {
             .toFixed(2)
         ),
         valor_multa: 0,
+        valor_frete: 0,
         status: data.status || "Ativo",
         leaseItems: leaseItems.map((item) => {
           const patrimonioId = item.patrimonio?.id || 0;
@@ -884,6 +888,12 @@ export default function LeasePage() {
     {
       field: "valor_multa",
       headerName: "Valor Multa",
+      width: 120,
+      valueFormatter: (params) => formatCurrency(params),
+    },
+    {
+      field: "valor_frete",
+      headerName: "Valor Frete",
       width: 120,
       valueFormatter: (params) => formatCurrency(params),
     },
@@ -1492,6 +1502,7 @@ export default function LeasePage() {
       y += 7;
       doc.text(`Valor Total: ${formatCurrency(lease.valor_total)}`, 14, y);
       doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y + 7);
+      doc.text(`Valor Frete: ${formatCurrency(lease.valor_frete)}`, 14, y + 7);
       y += 14;
 
       doc.setFontSize(12);

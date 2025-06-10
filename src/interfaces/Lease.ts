@@ -17,6 +17,7 @@ export interface LeaseProps {
   data_pagamento: string;
   valor_total: number; // Em formato decimal
   valor_multa: number;
+  valor_frete: number;
   status: string;
   observacoes?: string;
   createdAt: string; // Pode ser um formato ISO string

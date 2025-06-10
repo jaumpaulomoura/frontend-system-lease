@@ -28,6 +28,7 @@ interface Props {
   data_pagamento?: string;
   valor_total: number;
   valor_multa: number;
+  valor_frete: number;
   status: string;
   observacoes?: string | null;
   leaseItems: LeaseItem[];

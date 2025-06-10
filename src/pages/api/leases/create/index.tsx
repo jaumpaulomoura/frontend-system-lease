@@ -30,6 +30,7 @@ interface LeaseRequestBody {
   data_pagamento?: string;
   valor_total: number;
   valor_multa: number;
+  valor_frete: number;
   status: string;
   observacoes?: string;
   leaseItems: LeaseItem[];
@@ -69,6 +70,7 @@ export default async function handler(
     "data_prevista_devolucao",
     "valor_total",
     "valor_multa",
+    "valor_frete",
     "status",
     "leaseItems",
   ];
