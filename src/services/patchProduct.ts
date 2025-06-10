@@ -5,7 +5,7 @@ import api from "./api-routes";
 
 interface Props {
   name: string;
-  marca: string;
+  marca?: string;
   description?: string;
   daily_value?: number | null;
   weekly_value?: number | null;

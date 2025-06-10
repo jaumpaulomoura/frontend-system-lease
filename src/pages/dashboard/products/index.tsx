@@ -187,7 +187,7 @@ export default function ProductPage() {
       const productData: ProductProps = {
         id: editProduct?.id ?? 0,
         name: data.name,
-        marca: data.marca,
+        marca: data.marca || "",
         description: data.description || "",
         daily_value: data.daily_value ?? null,
         weekly_value: data.weekly_value ?? null,
@@ -475,7 +475,7 @@ export default function ProductPage() {
     const activeMatch =
       filterActive === "all" || product.active === filterActive;
 
-    const marcaMatch = product.marca
+    const marcaMatch = (product.marca ?? "")
       .toLowerCase()
       .includes(filterMarca.toLowerCase());
 
