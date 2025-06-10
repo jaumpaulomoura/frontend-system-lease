@@ -441,7 +441,7 @@ export default function LeasePage() {
           produto: {
             id: selectedLease.id,
             name: selectedLease.name,
-            marca: selectedLease.marca || "",
+            description: selectedLease.description || "",
             active: true,
             daily_value: selectedLease.daily_value || 0,
             weekly_value: selectedLease.weekly_value || 0,
@@ -1146,7 +1146,7 @@ export default function LeasePage() {
                                   variant="body2"
                                   color="textSecondary"
                                 >
-                                  {item.patrimonio.produto.marca}
+                                  {item.patrimonio.produto.description}
                                 </Typography>
                               </Box>
                             </TableCell>
@@ -2159,7 +2159,7 @@ export default function LeasePage() {
                           return isAvailable && !isAlreadyAdded;
                         })}
                         getOptionLabel={(option) =>
-                          `${option.name} (${option.marca}) - ${option.totalAvailable} disponíveis`
+                          `${option.name} (${option.description}) - ${option.totalAvailable} disponíveis`
                         }
                         value={selectedLease}
                         onChange={(_, newValue) => {
@@ -2275,18 +2275,32 @@ export default function LeasePage() {
                               }}
                             >
                               <MenuItem value="diario">
-                                Diário (R$ {selectedLease?.daily_value || 0})
+                                Diário (R${" "}
+                                {Number(
+                                  selectedLease?.daily_value || 0
+                                ).toFixed(2)}
+                                )
                               </MenuItem>
                               <MenuItem value="semanal">
                                 Semanal (R${" "}
-                                {(selectedLease?.daily_value || 0) * 7})
+                                {Number(
+                                  (selectedLease?.weekly_value || 0) * 7
+                                ).toFixed(2)}
+                                )
                               </MenuItem>
                               <MenuItem value="mensal">
                                 Mensal (R${" "}
-                                {(selectedLease?.daily_value || 0) * 30})
+                                {Number(
+                                  (selectedLease?.monthly_value || 0) * 30
+                                ).toFixed(2)}
+                                )
                               </MenuItem>
                               <MenuItem value="anual">
-                                Anual (R$ {selectedLease?.annual_value || 0})
+                                Anual (R${" "}
+                                {Number(
+                                  selectedLease?.annual_value || 0
+                                ).toFixed(2)}
+                                )
                               </MenuItem>
                             </TextField>
 
@@ -2346,7 +2360,7 @@ export default function LeasePage() {
                                 (p) => p.id === item.patrimonio.produto.id
                               ) || {
                                 name: "Produto Desconhecido",
-                                marca: "",
+                                description: "",
                                 daily_value: 0,
                                 weekly_value: 0,
                                 monthly_value: 0,
@@ -2372,7 +2386,7 @@ export default function LeasePage() {
                                 id: `${itemIndex}-0`,
                                 produtoId: item.patrimonio.produto.id,
                                 nome: product.name,
-                                marca: product.marca,
+                                description: product.description,
                                 patrimonio:
                                   item.patrimonio.numero_patrimonio ||
                                   `Patrimônio ${itemIndex}`,
