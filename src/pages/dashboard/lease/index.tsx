@@ -214,7 +214,7 @@ export default function LeasePage() {
       data_pagamento: "",
       valor_total: 0,
       valor_multa: 0,
-      valor_frete: 0,
+      valor_frete: 60,
       status: "Ativo",
       observacoes: "",
     },
@@ -573,7 +573,7 @@ export default function LeasePage() {
             .toFixed(2)
         ),
         valor_multa: 0,
-        valor_frete: 0,
+        valor_frete: data.valor_frete,
         status: data.status || "Ativo",
         leaseItems: leaseItems.map((item) => {
           const patrimonioId = item.patrimonio?.id || 0;
@@ -2101,25 +2101,29 @@ export default function LeasePage() {
                       <TextField
                         {...form.register("valor_total")}
                         label="Valor Total"
+                        size="small"
                         InputProps={{
                           readOnly: true,
                           startAdornment: (
                             <InputAdornment position="start">R$</InputAdornment>
                           ),
+                          style: { height: 40 }, // força altura consistente, ajuste conforme necessário
                         }}
                       />
 
-                      {/* <TextField
-                        {...form.register("status")}
-                        label="Status"
-                        select
+                      <TextField
+                        {...form.register("valor_frete", {
+                          valueAsNumber: true,
+                        })}
+                        label="Valor Frete"
                         size="small"
-                        required
-                      >
-                        <MenuItem value="Ativo">Ativo</MenuItem>
-                        <MenuItem value="Finalizado">Finalizado</MenuItem>
-                        <MenuItem value="Cancelado">Cancelado</MenuItem>
-                      </TextField> */}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">R$</InputAdornment>
+                          ),
+                          style: { height: 40 },
+                        }}
+                      />
                     </Box>
 
                     <TextField
