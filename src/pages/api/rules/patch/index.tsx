@@ -5,18 +5,7 @@ import { parseCookies } from "nookies";
 
 // eslint-disable-next-line import/no-anonymous-default-export
 export default async (req: NextApiRequest, response: NextApiResponse) => {
-  const {
-    name,
-    marca,
-    description,
-    daily_value,
-    weekly_value,
-    fortnightly_value,
-    monthly_value,
-    annual_value,
-    active,
-    id,
-  } = req.body;
+  const { dayIni, dayFin, campo, operador, valor, id } = req.body;
 
   const parsedCookies = parseCookies({ req });
   const token = parsedCookies.auth_token;
@@ -29,16 +18,12 @@ export default async (req: NextApiRequest, response: NextApiResponse) => {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
     const res: any = await api
-      .patch<any>(`/products/${id}`, {
-        marca,
-        name,
-        description,
-        daily_value,
-        weekly_value,
-        fortnightly_value,
-        monthly_value,
-        annual_value,
-        active,
+      .patch<any>(`/rules/${id}`, {
+        dayIni,
+        dayFin,
+        campo,
+        operador,
+        valor,
       })
       .then((resp) => resp.data);
 

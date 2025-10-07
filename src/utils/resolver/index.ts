@@ -32,6 +32,11 @@ export const ProductResolver = yup.object({
     .nullable()
     .positive("Valor deve ser positivo")
     .transform((value) => (isNaN(value) ? null : value)),
+  fortnightly_value: yup
+    .number()
+    .nullable()
+    .positive("Valor deve ser positivo")
+    .transform((value) => (isNaN(value) ? null : value)),
   monthly_value: yup
     .number()
     .nullable()
@@ -93,4 +98,13 @@ export const ClientResolver = yup.object({
     .string()
     .required("CEP de cobrança é obrigatório")
     .matches(/^\d{5}-?\d{3}$/, "CEP de cobrança inválido"),
+});
+
+export const RuleResolver = yup.object({
+  dayIni: yup.number().required("Dia inicial é obrigatório"),
+  dayFin: yup.number().required("Dia final é obrigatório"),
+  campo: yup.string().required("Campo é obrigatório"),
+  operador: yup.string().required("Operador é obrigatório"),
+  valor: yup.number().required("Valor é obrigatório"),
+  active: yup.boolean().required("O campo ativo é obrigatório"),
 });

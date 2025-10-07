@@ -47,6 +47,11 @@ import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import { LeaseProps } from "@interfaces/Lease";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { InitialContext } from "@contexts/InitialContext";
+import FinancialReportModal, {
+  ReportFilters,
+} from "@components/FinancialReportModal";
+import { generateFinancialReport } from "@components/FinancialPdfReport";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 ChartJS.register(
   CategoryScale,
@@ -90,6 +95,8 @@ export default function OderanDashboard() {
   const { showLoginSuccess, setShowLoginSuccess } = useContext(InitialContext);
   const [upcomingLeases, setUpcomingLeases] = useState<UpcomingReturn[]>([]);
   const { signOut } = useContext(InitialContext);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   console.log("upcomingLeases", upcomingLeases);
 
@@ -227,6 +234,11 @@ export default function OderanDashboard() {
   const filteredData = useMemo(() => {
     let filteredProducts = [...products];
     let filteredLeases = [...leases];
+
+    // Primeiro, exclui cancelados de todas as locações
+    filteredLeases = filteredLeases.filter(
+      (lease) => lease.status !== "Cancelado"
+    );
 
     // Apply product filter
     if (selectedProduct !== "all") {
@@ -473,6 +485,65 @@ export default function OderanDashboard() {
     setSelectedClient(event.target.value);
   };
 
+  const handleGenerateReport = async (filters: ReportFilters) => {
+    setReportLoading(true);
+    try {
+      // Filtrar locações baseado nos filtros do relatório (excluindo cancelados)
+      const filteredLeases = leases.filter((lease) => {
+        // Exclui cancelados primeiro
+        if (lease.status === "Cancelado") return false;
+
+        // Filtro por data
+        const relevantDate =
+          lease.data_pagamento || lease.data_prevista_devolucao;
+        if (!relevantDate) return false;
+
+        const leaseDate = new Date(relevantDate);
+        const startDate = new Date(filters.startDate);
+        const endDate = new Date(filters.endDate);
+
+        const dateInRange = leaseDate >= startDate && leaseDate <= endDate;
+
+        // Filtro por cliente
+        const clientMatch =
+          !filters.clientId ||
+          lease.cliente?.id?.toString() === filters.clientId;
+
+        // Filtro por status de pagamento
+        const paymentMatch =
+          filters.paymentStatus === "all" ||
+          (filters.paymentStatus === "paid" && lease.data_pagamento) ||
+          (filters.paymentStatus === "unpaid" && !lease.data_pagamento);
+
+        return dateInRange && clientMatch && paymentMatch;
+      });
+
+      await generateFinancialReport(filteredLeases, filters);
+
+      setSnackbar({
+        open: true,
+        message: "Relatório PDF gerado com sucesso!",
+        severity: "success" as "success" | "error" | "info" | "warning",
+      });
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      setSnackbar({
+        open: true,
+        message: "Erro ao gerar relatório PDF",
+        severity: "error" as "success" | "error" | "info" | "warning",
+      });
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // Estado do snackbar para mensagens
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
+
   if (loading) {
     return (
       <Box
@@ -595,6 +666,26 @@ export default function OderanDashboard() {
           {/* Filter Section */}
           <Grid container spacing={1} sx={{ padding: 1 }}>
             {" "}
+            {/* Financial Report Button */}
+            <Grid container spacing={1} sx={{ padding: 1, mb: 0 }}>
+              <Grid item xs={12}>
+                <Box display="flex" justifyContent="flex-end">
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<AssessmentIcon />}
+                    onClick={() => setShowReportModal(true)}
+                    disabled={reportLoading}
+                    // sx={{
+                    //   backgroundColor: "#2196f3",
+                    //   "&:hover": { backgroundColor: "#1976d2" },
+                    // }}
+                  >
+                    {reportLoading ? "Gerando..." : "Relatório Financeiro"}
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
             {/* Reduzi o spacing e padding */}
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
@@ -930,6 +1021,13 @@ export default function OderanDashboard() {
           </Grid>
         </Container>
       </Layout>
+
+      {/* Financial Report Modal */}
+      <FinancialReportModal
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onGenerateReport={handleGenerateReport}
+      />
       <Dialog
         open={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
@@ -1009,6 +1107,22 @@ export default function OderanDashboard() {
           sx={{ width: "100%" }}
         >
           Login realizado com sucesso! Bem-vindo ao Dashboard!
+        </Alert>
+      </Snackbar>
+
+      {/* Report Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>

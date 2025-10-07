@@ -224,6 +224,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Typography variant="body1">Locação</Typography>
             </ListItemButton>
           </ListItem>
+          <ListItem>
+            <ListItemButton
+              component={Link}
+              href="/dashboard/rule"
+              sx={{
+                backgroundColor: pathname.startsWith("/dashboard/rule")
+                  ? "#fce853"
+                  : "transparent",
+                color: pathname.startsWith("/dashboard/rule")
+                  ? "#000000"
+                  : "#transparent", // Branco e preto para teste
+                "&:hover": { backgroundColor: theme.palette.secondary.light },
+              }}
+            >
+              <Typography variant="body1">Regras</Typography>
+            </ListItemButton>
+          </ListItem>
         </List>
 
         <Box sx={{ display: "flex", marginTop: "auto", padding: 2 }}>

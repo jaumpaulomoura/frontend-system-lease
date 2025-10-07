@@ -7,6 +7,7 @@ export interface ProductProps {
   description?: string;
   daily_value?: number | null;
   weekly_value?: number | null;
+  fortnightly_value?: number | null;
   monthly_value?: number | null;
   annual_value?: number | null;
   active: boolean;

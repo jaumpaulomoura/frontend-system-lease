@@ -46,6 +46,7 @@ export type FormData = {
   description?: string;
   daily_value?: number | null;
   weekly_value?: number | null;
+  fortnightly_value?: number | null;
   monthly_value?: number | null;
   annual_value?: number | null;
   active: boolean;
@@ -72,6 +73,7 @@ export default function ProductPage() {
   // const [displayValueMonthly, setDisplayValueMonthly] = useState("");
   const [displayValues, setDisplayValues] = useState({
     weekly: "",
+    fortnightly: "",
     monthly: "",
   });
 
@@ -122,6 +124,7 @@ export default function ProductPage() {
         description: editProduct.description || "",
         daily_value: editProduct.daily_value ?? null,
         weekly_value: editProduct.weekly_value ?? null,
+        fortnightly_value: editProduct.fortnightly_value ?? null,
         monthly_value: editProduct.monthly_value ?? null,
         annual_value: editProduct.annual_value ?? null,
         active: editProduct.active ?? true,
@@ -133,6 +136,7 @@ export default function ProductPage() {
         description: "",
         daily_value: null,
         weekly_value: null,
+        fortnightly_value: null,
         monthly_value: null,
         annual_value: null,
         active: true,
@@ -191,6 +195,7 @@ export default function ProductPage() {
         description: data.description || "",
         daily_value: data.daily_value ?? null,
         weekly_value: data.weekly_value ?? null,
+        fortnightly_value: data.fortnightly_value ?? null,
         monthly_value: data.monthly_value ?? null,
         annual_value: data.annual_value ?? null,
         active: data.active ?? true,
@@ -296,6 +301,7 @@ export default function ProductPage() {
             stock.status || "N/A",
             formatCurrency(product.daily_value ?? 0),
             formatCurrency(product.weekly_value ?? 0),
+            formatCurrency(product.fortnightly_value ?? 0),
             formatCurrency(product.monthly_value ?? 0),
             stock.createdAt
               ? new Date(stock.createdAt).toLocaleDateString("pt-BR")
@@ -427,6 +433,18 @@ export default function ProductPage() {
       },
     },
     {
+      field: "fortnightly_value",
+      headerName: "Valor Quinzenal",
+      width: 120,
+      type: "number",
+      valueFormatter: (params) => {
+        // Multiplica por 2 por exemplo
+        const val = params;
+        if (val == null) return "N/A";
+        return `R$ ${(val * 15).toFixed(2)}`;
+      },
+    },
+    {
       field: "monthly_value",
       headerName: "Valor Mensal",
       width: 100,
@@ -493,6 +511,9 @@ export default function ProductPage() {
       setDisplayValues({
         weekly: editProduct.weekly_value
           ? (editProduct.weekly_value * 7).toFixed(2)
+          : "",
+        fortnightly: editProduct.fortnightly_value
+          ? (editProduct.fortnightly_value * 14).toFixed(2)
           : "",
         monthly: editProduct.monthly_value
           ? (editProduct.monthly_value * 30).toFixed(2)
@@ -730,6 +751,24 @@ export default function ProductPage() {
                   form.setValue("weekly_value", parseFloat(value) / 7);
                 } else {
                   form.setValue("weekly_value", null);
+                }
+              }}
+              type="number"
+            />
+            <TextField
+              label="Valor Quinzenal (Total)"
+              fullWidth
+              margin="normal"
+              value={displayValues.fortnightly}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDisplayValues((prev) => ({ ...prev, fortnightly: value }));
+
+                // Atualiza o valor dividido no form
+                if (value) {
+                  form.setValue("fortnightly_value", parseFloat(value) / 15);
+                } else {
+                  form.setValue("fortnightly_value", null);
                 }
               }}
               type="number"
