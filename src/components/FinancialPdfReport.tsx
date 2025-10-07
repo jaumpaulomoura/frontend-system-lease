@@ -57,13 +57,13 @@ const styles = StyleSheet.create({
     color: "#444",
   },
   table: {
-    display: "table",
     width: "auto",
     borderStyle: "solid",
     borderWidth: 1,
     borderRightWidth: 0,
     borderBottomWidth: 0,
   },
+
   tableRow: {
     margin: "auto",
     flexDirection: "row",
