@@ -179,54 +179,54 @@ const Footer = () => (
   </View>
 );
 
-const numberToWords = (num: number): string => {
-  // Implementação simplificada - considere usar uma biblioteca para conversão completa
-  const units = [
-    "",
-    "um",
-    "dois",
-    "três",
-    "quatro",
-    "cinco",
-    "seis",
-    "sete",
-    "oito",
-    "nove",
-  ];
-  const teens = [
-    "dez",
-    "onze",
-    "doze",
-    "treze",
-    "quatorze",
-    "quinze",
-    "dezesseis",
-    "dezessete",
-    "dezoito",
-    "dezenove",
-  ];
-  const tens = [
-    "",
-    "dez",
-    "vinte",
-    "trinta",
-    "quarenta",
-    "cinquenta",
-    "sessenta",
-    "setenta",
-    "oitenta",
-    "noventa",
-  ];
+// const numberToWords = (num: number): string => {
+//   // Implementação simplificada - considere usar uma biblioteca para conversão completa
+//   const units = [
+//     "",
+//     "um",
+//     "dois",
+//     "três",
+//     "quatro",
+//     "cinco",
+//     "seis",
+//     "sete",
+//     "oito",
+//     "nove",
+//   ];
+//   const teens = [
+//     "dez",
+//     "onze",
+//     "doze",
+//     "treze",
+//     "quatorze",
+//     "quinze",
+//     "dezesseis",
+//     "dezessete",
+//     "dezoito",
+//     "dezenove",
+//   ];
+//   const tens = [
+//     "",
+//     "dez",
+//     "vinte",
+//     "trinta",
+//     "quarenta",
+//     "cinquenta",
+//     "sessenta",
+//     "setenta",
+//     "oitenta",
+//     "noventa",
+//   ];
 
-  if (num < 10) return units[num];
-  if (num < 20) return teens[num - 10];
-  if (num < 100)
-    return (
-      tens[Math.floor(num / 10)] +
-      (num % 10 !== 0 ? " e " + units[num % 10] : "")
-    );
-  return num.toString();
-};
+//   if (num < 10) return units[num];
+//   if (num < 20) return teens[num - 10];
+//   if (num < 100)
+//     return (
+//       tens[Math.floor(num / 10)] +
+//       (num % 10 !== 0 ? " e " + units[num % 10] : "")
+//     );
+//   return num.toString();
+// };
 
 const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
   console.log(lease);
@@ -241,17 +241,17 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
   }
 
   // Calcula o total de dias e valor total
-  const startDate = lease.data_inicio ? new Date(lease.data_inicio) : null;
-  const endDate = lease.data_prevista_devolucao
-    ? new Date(lease.data_prevista_devolucao)
-    : null;
-  const days =
-    startDate && endDate
-      ? Math.ceil(
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
-      : 0;
-  const totalValue = lease.valor_total || 0;
+  // const startDate = lease.data_inicio ? new Date(lease.data_inicio) : null;
+  // const endDate = lease.data_prevista_devolucao
+  //   ? new Date(lease.data_prevista_devolucao)
+  //   : null;
+  // const days =
+  //   startDate && endDate
+  //     ? Math.ceil(
+  //         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  //       )
+  //     : 0;
+  // const totalValue = lease.valor_total || 0;
 
   function parseToNumber(value: string | number | undefined | null): number {
     return Number(value) || 0;
