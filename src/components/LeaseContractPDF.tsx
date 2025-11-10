@@ -54,13 +54,10 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   section: {
-    marginBottom: 1,
-    marginTop: 1,
+    marginBottom: 0.5,
   },
   clauseTitle: {
-    fontSize: 11,
-    marginBottom: 2.5,
-    marginTop: 2.5,
+    fontSize: 10,
     fontWeight: "bold",
     textAlign: "left",
     // marginVertical: 2,
@@ -68,8 +65,7 @@ const styles = StyleSheet.create({
     lineHeight: 0.9,
   },
   clauseText: {
-    marginBottom: 2,
-    marginTop: 2,
+    // marginBottom: 2,
     fontSize: 10,
     textAlign: "justify",
     lineHeight: 0.9,
@@ -154,20 +150,6 @@ const formatDate = (dateString?: string | null): string => {
     return "-";
   }
 };
-
-const formatDateTime = (dateString?: string) => {
-  if (!dateString) return "NÃO INFORMADO";
-  const date = new Date(dateString);
-  return date.toLocaleString("pt-BR" , {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-  .replace(",", "")
-};
-
 const Footer = () => (
   <View style={styles.footer} fixed>
     <Text
@@ -179,54 +161,54 @@ const Footer = () => (
   </View>
 );
 
-// const numberToWords = (num: number): string => {
-//   // Implementação simplificada - considere usar uma biblioteca para conversão completa
-//   const units = [
-//     "",
-//     "um",
-//     "dois",
-//     "três",
-//     "quatro",
-//     "cinco",
-//     "seis",
-//     "sete",
-//     "oito",
-//     "nove",
-//   ];
-//   const teens = [
-//     "dez",
-//     "onze",
-//     "doze",
-//     "treze",
-//     "quatorze",
-//     "quinze",
-//     "dezesseis",
-//     "dezessete",
-//     "dezoito",
-//     "dezenove",
-//   ];
-//   const tens = [
-//     "",
-//     "dez",
-//     "vinte",
-//     "trinta",
-//     "quarenta",
-//     "cinquenta",
-//     "sessenta",
-//     "setenta",
-//     "oitenta",
-//     "noventa",
-//   ];
+const numberToWords = (num: number): string => {
+  // Implementação simplificada - considere usar uma biblioteca para conversão completa
+  const units = [
+    "",
+    "um",
+    "dois",
+    "três",
+    "quatro",
+    "cinco",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+  ];
+  const teens = [
+    "dez",
+    "onze",
+    "doze",
+    "treze",
+    "quatorze",
+    "quinze",
+    "dezesseis",
+    "dezessete",
+    "dezoito",
+    "dezenove",
+  ];
+  const tens = [
+    "",
+    "dez",
+    "vinte",
+    "trinta",
+    "quarenta",
+    "cinquenta",
+    "sessenta",
+    "setenta",
+    "oitenta",
+    "noventa",
+  ];
 
-//   if (num < 10) return units[num];
-//   if (num < 20) return teens[num - 10];
-//   if (num < 100)
-//     return (
-//       tens[Math.floor(num / 10)] +
-//       (num % 10 !== 0 ? " e " + units[num % 10] : "")
-//     );
-//   return num.toString();
-// };
+  if (num < 10) return units[num];
+  if (num < 20) return teens[num - 10];
+  if (num < 100)
+    return (
+      tens[Math.floor(num / 10)] +
+      (num % 10 !== 0 ? " e " + units[num % 10] : "")
+    );
+  return num.toString();
+};
 
 const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
   console.log(lease);
@@ -241,17 +223,17 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
   }
 
   // Calcula o total de dias e valor total
-  // const startDate = lease.data_inicio ? new Date(lease.data_inicio) : null;
-  // const endDate = lease.data_prevista_devolucao
-  //   ? new Date(lease.data_prevista_devolucao)
-  //   : null;
-  // const days =
-  //   startDate && endDate
-  //     ? Math.ceil(
-  //         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  //       )
-  //     : 0;
-  // const totalValue = lease.valor_total || 0;
+  const startDate = lease.data_inicio ? new Date(lease.data_inicio) : null;
+  const endDate = lease.data_prevista_devolucao
+    ? new Date(lease.data_prevista_devolucao)
+    : null;
+  const days =
+    startDate && endDate
+      ? Math.ceil(
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        )
+      : 0;
+  const totalValue = lease.valor_total || 0;
 
   function parseToNumber(value: string | number | undefined | null): number {
     return Number(value) || 0;
@@ -271,11 +253,15 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
         // Senão, calcula baseado no período de cobrança
         const periodo = item.periodo_cobranca || item.periodo || "diario";
         const valorNegociado =
-          periodo === "diario" ? parseToNumber(item.valor_negociado_diario) :
-          periodo === "semanal" ? parseToNumber(item.valor_negociado_semanal) :
-          periodo === "quinzenal" ? parseToNumber(item.valor_negociado_quinzenal) :
-          periodo === "mensal" ? parseToNumber(item.valor_negociado_mensal) :
-          parseToNumber(item.valor_negociado_anual);
+          periodo === "diario"
+            ? parseToNumber(item.valor_negociado_diario)
+            : periodo === "semanal"
+            ? parseToNumber(item.valor_negociado_semanal)
+            : periodo === "quinzenal"
+            ? parseToNumber(item.valor_negociado_quinzenal)
+            : periodo === "mensal"
+            ? parseToNumber(item.valor_negociado_mensal)
+            : parseToNumber(item.valor_negociado_anual);
 
         const dias = item.quantidade_dias || 1;
         valorTotalPorItem = valorNegociado * dias;
@@ -330,64 +316,68 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
           </Text>
         </View>
 
-        {/* Numeração do contrato */}
+        {/* Dados das partes */}
         <View style={styles.section}>
-          {/* NUMERO_CONTRATO */}
-          <Text style={{ fontWeight: "bold" }}>
-            CONTRATO Nº {String(lease.id_locacao).padStart(4, "0")}
+          {/* LOCADORA */}
+          <Text style={{ fontWeight: "bold", marginBottom: 4 }}>LOCADORA:</Text>
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>Nome: </Text>
+            <Text>Ferreira aluguel de máquinas para construção civil</Text>
           </Text>
-          {/*<Text>{String(lease.id_locacao).padStart(4, '0')}</Text>*/}
-        </View>
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>CNPJ: </Text>
+            <Text>51.101.682/0001-60</Text>
+          </Text>
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>Endereço: </Text>
+            <Text>
+              Rua Jorge Tabah, 2950, Jardim Angela Rosa – CEP: 14.403-615 –
+              Franca/SP
+            </Text>
+          </Text>
 
-        {/*  DO CONTRATO */}
-        <Text style={styles.clauseText}>
-          Pelo presente instrumento particular de um lado{" "}
-          <Text style={{ fontWeight: "bold" }}>
-            FERREIRA ALUGUEL DE MÁQUINAS PARA CONSTRUÇÃO CIVIL
+          {/* LOCATÁRIO */}
+          <Text style={{ fontWeight: "bold", marginTop: 5, marginBottom: 4 }}>
+            LOCATÁRIO:
           </Text>
-          , devidamente inscrita no CNPJ sob nº
-          <Text style={{ fontWeight: "bold" }}>51.101.682/0001-60</Text> e
-          Inscrição Estadual nº
-          <Text style={{ fontWeight: "bold" }}>137.058.217.115</Text>
-          com sede na Rua Jorge Tabah, 2950, Jardim Angela Rosa – CEP:
-          14.403-615 – Franca/SP com seu representante legal infra-assinado, ora
-          denominada <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> e, de
-          outro lado, o abaixo identificado, denominado como{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>, convencionam a
-          locação de Bens Móveis, mediante as seguintes clausulas e condições
-          que se obrigam, constantes e obrigações deste contrato:
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>Nome: </Text>
+            <Text>{lease.cliente?.name || "NÃO INFORMADO"}</Text>
+          </Text>
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>Documento: </Text>
+            <Text>{lease.cliente?.cpf_cnpj || "NÃO INFORMADO"}</Text>
+          </Text>
+          <Text>
+            <Text style={{ fontWeight: "bold" }}>Endereço: </Text>
+            <Text>
+              {[
+                lease.rua_locacao || "NÃO INFORMADO",
+                lease.numero_locacao,
+                lease.complemento_locacao,
+                lease.bairro_locacao,
+                `${lease.cidade_locacao || "CIDADE NÃO INFORMADA"}/${
+                  lease.estado_locacao || "UF"
+                }`,
+                `CEP: ${lease.cep_locacao || "NÃO INFORMADO"}`,
+              ]
+                .filter(Boolean)
+                .join(" - ")}
+            </Text>
+          </Text>
+        </View>
+        <View style={{ borderBottom: "1px solid #000" }} />
+        {/* Cláusula 1ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 1ª - DO OBJETO</Text>
+        <Text style={styles.clauseText}>
+          As partes acima mencionadas celebram o presente{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            CONTRATO DE LOCAÇÃO DE EQUIPAMENTO
+          </Text>
+          , que se regerá pelas cláusulas e condições a seguir estipuladas.
         </Text>
 
-        <View style={styles.section}>
-          <Text style={{ fontWeight: "bold" }}>
-            PEDIDO: {String(lease.id_locacao).padStart(4, "0")}{" "}
-          </Text>
-          <Text style={{ fontWeight: "bold" }}>
-            LOCATÁRIA: {lease.cliente?.name || "NÃO INFORMADO"}
-          </Text>
-          <Text style={{ fontWeight: "bold" }}>
-            DOCUMENTO: {lease.cliente?.cpf_cnpj || "NÃO INFORMADO"}
-          </Text>
-          <Text style={{ fontWeight: "bold" }}>ENDEREÇO:{" "} 
-            {[
-              lease.cliente.rua || "NÃO INFORMADO",
-              lease.cliente.numero,
-              lease.cliente.complemento,
-              lease.cliente.bairro,
-              `${lease.cliente.cidade || "CIDADE NÃO INFORMADA"}/${
-                lease.cliente.estado || "UF"
-              }`,
-              `CEP: ${lease.cliente.cep || "NÃO INFORMADO"}`,
-            ]
-              .filter(Boolean)
-              .join(" - ")}
-          </Text>
-          {/*  DO OBJETO */}
-          <Text style={styles.clauseTitle}>DO OBJETO</Text>
-          <Text style={{ fontWeight: "bold" }}>EQUIPAMENTOS:</Text>
-        </View>
-
-        {/*  TABELA DE EQUIPAMENTOS */}
+        {/* Tabela de equipamentos */}
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCell}>Equipamento</Text>
@@ -405,255 +395,350 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
             </View>
           ))}
         </View>
-        
-
-
-        {/*  Cláusula 1ª */}
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+        {/* Cláusula 2ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 2ª - DA ENTREGA</Text>
         <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 1ª</Text>- O presente
-          Instrumento tem como objeto a locação pela{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> à{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> do bem(ns)
-          móvel(eis) de sua propriedade, nos termos do artigo 565 e seguintes do
-          Código Civil, conforme discriminadas abaixo:
+          O equipamento objeto deste contrato será entregue, por determinação do
+          LOCATÁRIO, no seguinte endereço:
         </Text>
-        {/* DO PRAZO DA LOCAÇÃO */}
-        {/*  Cláusula 2ª */}
-        <Text style={styles.clauseTitle}>DO PRAZO DA LOCAÇÃO</Text>
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 2ª</Text>- A locação
-          será por dias corridos, incluindo sábados, domingos e feriados,
-          vigorando pelo prazo certo de{" "}
-          <Text style={{ fontWeight: "bold" }}>
-          <Text>{formatDateTime(lease.data_inicio)}</Text>{" à "}
-          <Text>{formatDateTime(lease.data_prevista_devolucao)}</Text></Text>, ou até a efetiva
-          retirada ou a devolução de todos os bem(ns) no depósito da{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text>.
-        </Text>
-        {/*  Cláusula 3ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 3ª</Text>- Caso a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> continue na
-          posse dos equipamentos após o término da vigência inicialmente
-          pactuada, o presente contrato ficará automaticamente prorrogado por
-          prazo indeterminado, nas mesmas condições previstas na proposta de
-          locação, observando-se o reajuste anual pelo índice IGM-P (índice
-          Geral de Preços do Mercado), calculado pela Fundação Getúlio Vargas (
-          FGV), vigorando a locação até a efetiva devolução dos bem(ns), devendo
-          a{" "}
-          <Text style={{ fontWeight: "bold" }}>
-            <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>{" "}
-          </Text>{" "}
-          arcar com os valores da locação e de eventuais despesas pelo período
-          em que permanecer na posse dos equipamentos.
-        </Text>
-
-        {/* DO PREÇO E FORMA DE PAGAMENTO */}
-        {/*  Cláusula 4ª */}
-        <Text style={styles.clauseTitle}>DO PREÇO E FORMA DE PAGAMENTO</Text>
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 4ª</Text>- A{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> pagará à{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> o valor de R$
-          <Text>{lease.valor_total}</Text> referente ao aluguel na modalidade
-          mensal, cuja a cobrança dar-se-á mediante a emissão do procedimento de
-          retirada assinado.
-        </Text>
-        {/* DO INADIMPLEMENTO */}
-        {/*  Cláusula 5ª */}
-        <Text style={styles.clauseTitle}>DO INADIMPLEMENTO</Text>
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 5ª</Text>- Não ocorrendo
-          o pagamento na data avençada, após a retirada ou a devolução dos
-          bem(ns), o valor do débito será acrescido de multa moratória de 2%
-          (dois por cento), correção monetária pela Tabela DEPRE Tribunal de
-          Justiça do Estado de São Paulo e juros de mora de 1% (um por cento) ao
-          mês pro rata die (proporcional ao dia) até a sua efetiva compensação,
-          com incidência de multa compensatória de 20% (vinte por cento), além
-          das custas processuais e honorários advocatícios de 20% (vinte por
-          cento), constituindo-se automaticamente a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> em mora,
-          independentemente de qualquer notificação prévia, autorizando a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> a rescisão do
-          presente contrato, de pleno direito, promover a execução do presente
-          instrumento.
-        </Text>
-        {/*  Cláusula 6ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 6ª</Text>- Na
-          impossibilidade de reaver os bem(ns) locados ou ocorrendo extravios,
-          furtos ou por terceiro desconhecido dos bem(ns) locados e entregues, a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> responderá pela
-          indenização correspondente ao valor real de cada equipamento (valor
-          unitário de indenização) conforme descrito na Cláusula 1ª, do
-          procedimento de retirada assinado, sem qualquer abatimento, além dos
-          valores locatícios descritos no contrato em aberto e seus encargos
-          conforme previstos na Cláusula 5ª, sem prejuízo de eventuais perdas e
-          danos sofridos pela LOCADORA, nos termos do artigo 570 do Código Civil
-        </Text>
-        {/* DA RETIRADA E DEVOLUÇÃO DOS BENS LOCADOS */}
-        {/*  Cláusula 7ª */}
-        <Text style={styles.clauseTitle}>
-          DA RETIRADA E DEVOLUÇÃO DOS BENS LOCADOS
-        </Text>
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 7ª</Text>- A{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> receberá os bens
-          locados em perfeito estado de funcionamento e de condições de uso,
-          devidamente testados, no momento da entrega e compromete a zelar pela
-          sua guarda e conservação, sendo vedado realizar qualquer tipo de
-          modificação ou adaptação nas características e estruturas dos bens,
-          obrigando-se a restituí-los, às suas expensas, no mesmo local em que
-          os retirou, ou na entrega, devidamente limpos e prontos para uso, sem
-          danos ou avaria de qualquer espécie, ressalvado o desgaste decorrente
-          do uso normal, nos termos do artigo 566 do Código Civil.
-        </Text>
-        {/*  Cláusula 8ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 8ª</Text>- Os bens
-          locados serão utilizados pela{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> exclusivamente
-          na obra indicada na rua:
-          <Text style={{ fontWeight: "bold" }}>
-            {" "}
-            {/* Endereço de entrega:{" "}*/}
-            <Text style={[styles.clauseText, { fontStyle: "italic" }]}>
-              {[
-                lease.rua_locacao || "NÃO INFORMADO",
-                lease.numero_locacao,
-                lease.complemento_locacao,
-                lease.bairro_locacao,
-                `${lease.cidade_locacao || "CIDADE NÃO INFORMADA"}/${
-                  lease.estado_locacao || "UF"
-                }`,
-                `CEP: ${lease.cep_locacao || "NÃO INFORMADO"}`,
-              ]
-                .filter(Boolean)
-                .join(", ")}
-            </Text>
+        <Text style={{ fontWeight: "bold" }}>
+          {" "}
+          {/* Endereço de entrega:{" "}*/}
+          <Text style={[styles.clauseText, { fontStyle: "italic" }]}>
+            {[
+              lease.rua_locacao || "NÃO INFORMADO",
+              lease.numero_locacao,
+              lease.complemento_locacao,
+              lease.bairro_locacao,
+              `${lease.cidade_locacao || "CIDADE NÃO INFORMADA"}/${
+                lease.estado_locacao || "UF"
+              }`,
+              `CEP: ${lease.cep_locacao || "NÃO INFORMADO"}`,
+            ]
+              .filter(Boolean)
+              .join(", ")}
           </Text>
-          sendo vedada a sua utilização em obra diversa da ora indicada, salvo
-          com prévia anuência por escrito da LOCADORA, sob pena de incorrer em
-          infração contratual.
         </Text>
-        {/*  Cláusula 9ª */}
         <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 9ª</Text> - É vedado à{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> a sublocação do
-          equipamento(s), emprestar ou arrendar os equipamentos constantes do
-          presente contrato, ou ceder seu uso a terceiros por qualquer forma,
-          ainda que a título gratuito, sob pena de descumprimento contratual.
-        </Text>
-        {/*  Cláusula 10ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 10ª</Text>- Na ocasião
-          da devolução ou retirada dos equipamentos, os equipamentos serão
-          vistoriados para conferência e aferição do estado de conservação dos
-          mesmos, com a emissão do Comprovante de Devolução (protocolo de
-          remoção), que deverá ser assinado pela{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> ou por qualquer
-          pessoa por ela enviada no momento da devolução do bem(ns) locados,
-          considerando-se esta como Preposta, o que desde já resta reconhecido
-          para todos os fins de direito, nos termos do artigo 569 do Código
-          Civil.
-        </Text>
-        {/*  Cláusula 11ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 11ª</Text>- Caso
-          constatada pela <Text style={{ fontWeight: "bold" }}>LOCADORA</Text>{" "}
-          qualquer irregularidade, dano, falha, vício ou desgaste por mal uso
-          dos equipamentos, após a entrega, incorrerá a <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> no pagamento
-          de todas as despesas decorrentes, a qual será comunicada em até 5
-          (cinco) dias da data da vistoria (entrega ou retirada), sem prejuízo
-          de posterior cobrança por vícios ocultos que porventura vierem a ser
-          identificados, nos termos da legislação vigente, Lei 8.078 do Código
-          de Defesa do Consumidor.
-        </Text>
-        {/* DA RESCISÃO */}
-        {/*  Cláusula 12ª */}
-        <Text style={styles.clauseTitle}>DA RESCISÃO</Text>
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 12ª</Text>- O presente
-          contrato poderá ser denunciado (termino do contrato) por uma das
-          partes, mediante aviso por escrito, com antecedência mínima de 15
-          (quinze) dias, ressalvando-se o pagamento das obrigações locatícias
-          abertas até a data apontada para o seu término.
+          <Text style={{ fontWeight: "bold" }}> 1º </Text>A entrega somente será
+          considerada efetivada após verificação e aceitação expressa do estado
+          do equipamento por ambas as partes, conforme disposto na Cláusula 5ª.
         </Text>
 
-        {/*  Cláusula 13ª */}
         <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 13ª</Text> - O presente
-          contrato será rescindido automaticamente e de pleno direito, nos
-          termos do artigo 472, 473 e 474 do Código Civil, independentemente de
-          qualquer espécie de notificação à{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>, sendo facultada
-          à <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> a imediata
-          reintegração na posse do bem(ns), descrito neste contrato (locados),
-          com o que desde já concorda a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>, especialmente
-          nas seguintes hipóteses:
+          <Text style={{ fontWeight: "bold" }}> 2º </Text>
+          Quaisquer custos adicionais decorrentes de alteração no endereço de
+          entrega após a assinatura deste contrato serão integralmente
+          suportados pelo LOCATÁRIO.
         </Text>
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+        {/* Cláusula 3ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 3ª – DO PAGAMENTO</Text>
         <Text style={styles.clauseText}>
-          a - Em caso de decretação da insolvência, recuperação judicial ou
-          extrajudicial, falência ou dissolução do contrato com a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>;{"\n"}b - Se
-          houver o descumprimento de qualquer cláusula deste contrato;
-          {"\n"}c - Em caso de perda, extravio, dano grave, furto ou roubo de
-          quaisquer dos bens objeto deste contrato.
-          {"\n"}
-          Parágrafo único - Ocorrendo quaisquer das hipóteses referidas nas
-          alíneas acima, poderá a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> promover a
-          retirada dos equipamentos locados, onde quer que estejam, independente
-          de quaisquer avisos, notificações ou interpelação judicial e sem
-          nenhuma formalidade, cujas despesas decorrentes de tal ato serão
-          suportadas pela <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>,
-          conforme previsto na Cláusula 6º.
+          O LOCATÁRIO pagará diretamente à LOCADORA o aluguel pelos equipamentos
+          locados, contado a partir da data de entrega dos equipamentos, por um
+          período de {days} ({numberToWords(days)}) dias, no valor de{" "}
+          {formatCurrency(totalValue)} ({numberToWords(Math.floor(totalValue))}{" "}
+          reais), computado até o dia anterior ao da devolução. O pagamento será
+          efetuado no final da locação, se esta não exceder 30 (trinta) dias ou
+          no trigésimo dia, para locações que excederem esse período.
         </Text>
 
-        {/* DA ESPONSABILIDADE DA LOCATÁRIA POR ACIDENTES OU DANOS A TERCEIROS */}
-        {/*  Cláusula 14ª */}
+        <Text style={styles.clauseText}>
+          <Text style={{ fontWeight: "bold" }}> 1º </Text>
+          <Text>Considera-se </Text>
+          <Text style={{ fontWeight: "bold" }}>data de entrega </Text>
+          <Text>
+            o dia em que o equipamento for entregue e ambas as partes atestar
+            suas condições satisfatórias.
+          </Text>
+        </Text>
+
+        <Text style={styles.clauseText}>
+          <Text style={{ fontWeight: "bold" }}> 2º </Text>
+          <Text>
+            Eventuais atrasos no faturamento pela LOCADORA e consequentes
+            postergações de vencimento{" "}
+          </Text>
+          <Text style={{ fontWeight: "bold" }}>
+            não constituirão novação contratual{" "}
+          </Text>
+          <Text>
+            nem alteração da regra de faturamento, que prevalecerá integralmente
+            quando retomada.
+          </Text>
+        </Text>
+
+        <Text style={styles.clauseText}>
+          <Text style={{ fontWeight: "bold" }}> 3º </Text>
+          <Text>
+            O LOCATÁRIO obriga-se ao pagamento integral do aluguel até o término
+            do prazo contratual, conforme disposto no Código Civil Brasileiro.
+          </Text>
+        </Text>
+
+        <Text style={styles.clauseText}>
+          <Text style={{ fontWeight: "bold" }}> 4º </Text>
+          <Text>Este contrato </Text>
+          <Text style={{ fontWeight: "bold" }}>renova-se automaticamente </Text>
+          <Text>
+            por prazo indeterminado, salvo manifestação expressa do LOCATÁRIO.
+          </Text>
+        </Text>
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+        {/* Cláusula 4ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 4ª – DO REAJUSTE</Text>
+        <Text style={styles.clauseText}>
+          O valor da locação será reajustado com base na variação do{" "}
+          <Text style={{ fontWeight: "bold" }}>IGP-M</Text> (Índice Geral de
+          Preços – Mercado), na menor periodicidade admitida em lei. Em caso de
+          suspensão ou extinção do IGP-M, aplicar-se-á o índice que oficialmente
+          o substituir.
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 5ª */}
         <Text style={styles.clauseTitle}>
-          DA ESPONSABILIDADE DA LOCATÁRIA POR ACIDENTES OU DANOS A TERCEIROS
+          CLÁUSULA 5ª – DA ENTREGA E DEVOLUÇÃO
         </Text>
         <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 14ª</Text>- Qualquer
-          acidente ocorrido com os equipamentos ou por eles causados a
-          terceiros, desde o momento da sua retirada até a sua efetiva devolução
-          à <Text style={{ fontWeight: "bold" }}>LOCADORA</Text>, será de total
-          e exclusiva responsabilidade da{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text>, isentando a{" "}
-          <Text style={{ fontWeight: "bold" }}>LOCADORA</Text> de quaisquer
-          obrigações civis, trabalhistas, criminais e outras, em decorrência
-          deste contrato.
+          O LOCATÁRIO declara, com a assinatura deste contrato, ter recebido os
+          equipamentos em{" "}
+          <Text style={{ fontWeight: "bold" }}>perfeitas condições de uso</Text>
+          , comprometendo-se a devolvê-los nas mesmas ou melhores condições,{" "}
+          <Text style={{ fontWeight: "bold" }}>sem ônus</Text> por benfeitorias
+          (úteis, voluptuárias ou necessárias) realizadas sem prévia autorização
+          da LOCADORA.
         </Text>
-        {/*  Cláusula 15ª */}
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 6ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 6ª – DO TRANSPORTE</Text>
         <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 15ª</Text>- A
-          <Text style={{ fontWeight: "bold" }}>LOCATÁRIA</Text> se obriga a
-          utilizar os bens em conformidade com a legislação vigente no tocante a
-          Segurança e Saúde no Trabalho, em particular às Normas
-          Regulamentadoras do Ministério do Trabalho e Emprego, instituídas pelo
-          conjunto de normas regulamentares, a segurança e saúde no trabalho,
-          Portaria 3214/78, e suas alterações posteriores.
+          O LOCATÁRIO responsabilizar-se-á,{" "}
+          <Text style={{ fontWeight: "bold" }}>por sua conta e risco</Text>,
+          pelo transporte dos equipamentos, da retirada até a devolução na sede
+          da LOCADORA.
         </Text>
-        {/*  Cláusula 16ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 16ª</Text>- O presente
-          instrumento constitui título executivo extrajudicial, nos termos do
-          artigo 784, inciso III, do Código de Processo Civil.
-        </Text>
-        {/*  Cláusula 17ª */}
-        <Text style={styles.clauseText}>
-          <Text style={{ fontWeight: "bold" }}>CLÁUSULA 17ª</Text>- As partes
-          elegem o foro da Comarca de Franca, Estado de São Paulo, como
-          competente para dirimir toda e qualquer disputa decorrente do presente
-          contrato.
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 7ª */}
+        <Text style={styles.clauseTitle}>
+          CLÁUSULA 7ª – DAS OBRIGAÇÕES DO LOCATÁRIO
         </Text>
         <Text style={styles.clauseText}>
-          E por estarem assim, justas e contratadas, as partes firmam o presente
-          contrato, elaborado em 2 (duas) vias de igual teor e conteúdo, com
-          duas testemunhas.
+          É de responsabilidade do LOCATÁRIO:
+        </Text>
+        <Text style={styles.clauseText}>
+          a) Usar o equipamento corretamente,{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            sem sublocar, ceder ou transferir
+          </Text>
+          a locação, e devolvê-lo no término do contrato;
+        </Text>
+        <Text style={styles.clauseText}>
+          b) Manter o equipamento no local de entrega,{" "}
+          <Text style={{ fontWeight: "bold" }}>sendo vedada</Text> a mudança sem
+          autorização prévia por escrito da LOCADORA;
+        </Text>
+        <Text style={styles.clauseText}>
+          c) <Text style={{ fontWeight: "bold" }}>Não modificar</Text> o
+          equipamento;
+        </Text>
+        <Text style={styles.clauseText}>
+          d){" "}
+          <Text style={{ fontWeight: "bold" }}>
+            Defender os direitos de propriedade
+          </Text>{" "}
+          da LOCADORA, impedindo penhora, sequestro ou arresto por terceiros;
+        </Text>
+        <Text style={styles.clauseText}>
+          e) Comunicar imediatamente à LOCADORA qualquer violação de seus
+          direitos sobre o equipamento;
+        </Text>
+        <Text style={styles.clauseText}>
+          f) Contratar profissionais qualificados para{" "}
+          <Text style={{ fontWeight: "bold" }}>montagem/desmontagem</Text> ou
+          uso de equipamentos elétricos, de corte ou impacto, arcando com
+          eventuais danos a terceiros;
+        </Text>
+        <Text style={styles.clauseText}>
+          g) Indenizar danos, prejuízos ou inutilização do equipamento,
+          incluindo sujeira por massa de reboco ou cimento;
+        </Text>
+        <Text style={styles.clauseText}>
+          h) <Text style={{ fontWeight: "bold" }}>Impedir intervenções</Text> de
+          terceiros não autorizadas nos componentes internos do equipamento.
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 8ª */}
+        <Text style={styles.clauseTitle}>
+          CLÁUSULA 8ª – DO PAGAMENTO E MULTA
+        </Text>
+        <Text style={styles.clauseText}>
+          O LOCATÁRIO pagará pontualmente os alugueis e faturas na sede da
+          LOCADORA ou local indicado. Em caso de atraso:
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>Acréscimo do IGP-M</Text> pelos
+          dias em mora;
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            Multa de 2% (dois por cento)
+          </Text>
+          ;
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>Juros de 1% (um por cento)</Text>{" "}
+          ao mês ou fração;
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>Rescisão contratual</Text>, se
+          aplicável.
+        </Text>
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 9ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 9ª – DAS SANÇÕES</Text>
+        <Text style={styles.clauseText}>
+          Além dos acréscimos moratórios, o descumprimento das obrigações
+          acarretará:
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            Multa de 3 (três) vezes o aluguel mínimo mensal vigente
+          </Text>
+          ;
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            Custas judiciais e honorários advocatícios
+          </Text>
+          ;
+        </Text>
+        <Text style={styles.clauseText}>
+          <Text style={{ marginRight: 5 }}>•</Text>{" "}
+          <Text style={{ fontWeight: "bold" }}>Multa por roubo</Text>: R$
+          2.000,00 (dois mil reais).
+        </Text>
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 10ª */}
+        <Text style={styles.clauseTitle}>
+          CLÁUSULA 10ª – DA DEVOLUÇÃO E RESSARCIMENTO
+        </Text>
+        <Text style={styles.clauseText}>
+          A recusa da devolução ou dano ao equipamento obriga o LOCATÁRIO ao
+          ressarcimento por{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            danos materiais e lucros cessantes
+          </Text>
+          .
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 11ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 11ª – DA RESCISÃO</Text>
+        <Text style={styles.clauseText}>
+          A LOCADORA poderá rescindir o contrato e exigir a{" "}
+          <Text style={{ fontWeight: "bold" }}>devolução imediata</Text>
+          do equipamento em caso de infração pelo LOCATÁRIO, inclusive via ação
+          judicial (reintegração de posse).
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 12ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 12ª – DA FALÊNCIA</Text>
+        <Text style={styles.clauseText}>
+          A LOCADORA poderá rescindir a locação e retirar os equipamentos em
+          caso de{" "}
+          <Text style={{ fontWeight: "bold" }}>falência ou insolvência</Text> do
+          LOCATÁRIO.
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 13ª */}
+        <Text style={styles.clauseTitle}>
+          CLÁUSULA 13ª – DO PRAZO PARA REGULARIZAÇÃO
+        </Text>
+        <Text style={styles.clauseText}>
+          O descumprimento contratual por qualquer das partes permitirá a
+          rescisão{" "}
+          <Text style={{ fontWeight: "bold" }}>mediante aviso por escrito</Text>
+          , com prazo de{" "}
+          <Text style={{ fontWeight: "bold" }}>5 (cinco) dias</Text> a partir da
+          inadimplência.
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Cláusula 14ª */}
+        <Text style={styles.clauseTitle}>CLÁUSULA 14ª – DO FORO</Text>
+        <Text style={styles.clauseText}>
+          Fica eleito o{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            Foro da Comarca de Franca/SP
+          </Text>{" "}
+          para dirimir questões decorrentes deste contrato, com renúncia a
+          qualquer outro, por mais privilegiado que seja.
+        </Text>
+
+        <View
+          style={{ borderBottom: "1px solid #000", marginVertical: 2 }}
+        ></View>
+
+        {/* Disposições finais */}
+        <Text style={[styles.clauseTitle, { marginTop: 20 }]}>
+          DISPOSIÇÕES FINAIS
+        </Text>
+        <Text style={styles.clauseText}>
+          As partes, de pleno acordo, firmam este contrato em{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            2 (duas) vias de igual teor
+          </Text>
+          , na presença de 2 (duas) testemunhas.
         </Text>
 
         {/* Data e assinaturas */}
@@ -676,7 +761,7 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
 
           <View style={styles.signatureBox}>
             <Text style={{ textAlign: "center", fontWeight: "bold" }}>
-              LOCATÁRIA
+              LOCATÁRIO
             </Text>
             <View style={styles.signatureLine}></View>
             {/* <Text style={{ textAlign: "center" }}>[Assinatura]</Text>
