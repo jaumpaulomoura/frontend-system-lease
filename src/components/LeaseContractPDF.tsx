@@ -261,11 +261,25 @@ const LeaseContractPDF = ({ lease }: { lease?: LeaseProps | null }) => {
     (acc, item) => {
       const productName = item.patrimonio?.produto?.name || "-";
 
-      const valorTotalPorItem =
-        parseToNumber(item.valor_negociado_diario) +
-        parseToNumber(item.valor_negociado_semanal) +
-        parseToNumber(item.valor_negociado_mensal) +
-        parseToNumber(item.valor_negociado_anual);
+      // Calcula o valor total do item
+      let valorTotalPorItem: number;
+
+      // Se valor_total foi editado manualmente, usa ele
+      if (item.valor_total != null && item.valor_total > 0) {
+        valorTotalPorItem = parseToNumber(item.valor_total);
+      } else {
+        // Senão, calcula baseado no período de cobrança
+        const periodo = item.periodo_cobranca || item.periodo || "diario";
+        const valorNegociado =
+          periodo === "diario" ? parseToNumber(item.valor_negociado_diario) :
+          periodo === "semanal" ? parseToNumber(item.valor_negociado_semanal) :
+          periodo === "quinzenal" ? parseToNumber(item.valor_negociado_quinzenal) :
+          periodo === "mensal" ? parseToNumber(item.valor_negociado_mensal) :
+          parseToNumber(item.valor_negociado_anual);
+
+        const dias = item.quantidade_dias || 1;
+        valorTotalPorItem = valorNegociado * dias;
+      }
 
       if (!acc[productName]) {
         acc[productName] = {

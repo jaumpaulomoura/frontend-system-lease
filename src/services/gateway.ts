@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-namespace */
 import axios from 'axios'
 
 const api = axios.create({

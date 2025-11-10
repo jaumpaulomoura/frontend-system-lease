@@ -8,15 +8,14 @@ interface ResetParams {
 
 export async function getResetPass(params: ResetParams): Promise<void> {
   try {
-    // Chama diretamente a API route sem adicionar token
-    await api.post("/api/auth/reset", {
-      email: params.email,
-      newPassword: params.password, // Transforma para newPassword aqui
+    // Chama o endpoint de alterar senha (usuário logado)
+    await api.post("/api/auth/change-password", {
+      newPassword: params.password,
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new Error(
-        error.response?.data?.error || "Falha ao redefinir senha"
+        error.response?.data?.error || "Falha ao alterar senha"
       );
     }
     throw new Error("Erro inesperado");

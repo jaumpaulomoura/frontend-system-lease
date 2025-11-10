@@ -6,12 +6,17 @@ interface LeaseItem {
   id_patrimonio: number;
   valor_unit_diario: number;
   valor_unit_semanal: number;
+  valor_unit_quinzenal?: number;
   valor_unit_mensal: number;
   valor_unit_anual: number;
   valor_negociado_diario: number;
   valor_negociado_semanal: number;
+  valor_negociado_quinzenal?: number;
   valor_negociado_mensal: number;
   valor_negociado_anual: number;
+  quantidade_dias?: number;
+  periodo_cobranca?: string;
+  valor_total?: number;
 }
 interface Props {
   cliente_id: number;
@@ -22,6 +27,7 @@ interface Props {
   cidade_locacao: string;
   estado_locacao: string;
   cep_locacao: string;
+  telefone_contato?: string;
   data_inicio: string;
   data_prevista_devolucao: string;
   data_real_devolucao?: string;

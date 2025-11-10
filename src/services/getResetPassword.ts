@@ -8,16 +8,21 @@ interface ResetParams {
 
 export async function getResetPassword(params: ResetParams): Promise<void> {
   try {
-    // Chama diretamente o endpoint do backend NestJS
-    await api.post("api/auth/resetPass", {
-      // Remove /api se já está na baseURL
+    console.log('🔍 [Frontend] Enviando requisição de reset...');
+    console.log('🔍 [Frontend] Token:', params.token?.substring(0, 50) + '...');
+
+    // Chama o endpoint do Next.js que faz proxy para o backend
+    await api.post("/api/auth/resetPass", {
       token: params.token,
-      password: params.password, // Mantém consistente com o backend
+      password: params.password,
     });
+
+    console.log('✅ [Frontend] Reset realizado com sucesso');
   } catch (error) {
+    console.error('❌ [Frontend] Erro no reset:', error);
     if (axios.isAxiosError(error)) {
       throw new Error(
-        error.response?.data?.message || "Falha ao redefinir senha"
+        error.response?.data?.error || error.response?.data?.message || "Falha ao redefinir senha"
       );
     }
     throw new Error("Erro inesperado ao redefinir senha");

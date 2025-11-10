@@ -1,128 +1,604 @@
 // components/pdf/FaturaPdfLayout.tsx
 import React from "react";
+import { LeaseProps } from "@interfaces/Lease";
 
-interface Cliente {
-  name: string;
-  endereco?: string;
-}
+const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
+  // Formatar datas
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("pt-BR");
+  };
 
-interface LeaseData {
-  id_locacao: number;
-  data_inicio: string;
-  data_prevista_devolucao: string;
-  cliente: Cliente;
-  rua_locacao: string;
-  numero_locacao: string;
-  bairro_locacao: string;
-  cidade_locacao: string;
-  estado_locacao: string;
-}
+  // Formatar valores monetários
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
 
-const FaturaPdfLayout = ({ lease }: { lease: LeaseData }) => {
+  // Agrupar itens por produto
+  const agruparPorProduto = () => {
+    const grupos: {
+      [key: string]: {
+        nome: string;
+        marca: string;
+        periodo: string;
+        quantidade: number;
+        valorUnitario: number;
+        valorTotal: number;
+      }
+    } = {};
+
+    lease.leaseItems.forEach((item) => {
+      const produtoNome = item.patrimonio?.produto?.name || "N/A";
+      const produtoMarca = item.patrimonio?.produto?.marca || "";
+      const chave = `${produtoNome}_${produtoMarca}`;
+
+      if (!grupos[chave]) {
+        grupos[chave] = {
+          nome: produtoNome,
+          marca: produtoMarca,
+          periodo: item.periodo_cobranca || item.periodo || "diario",
+          quantidade: 0,
+          valorUnitario: 0,
+          valorTotal: 0,
+        };
+      }
+
+      // Calcula o valor deste item
+      let valorItem: number;
+
+      // Se valor_total foi editado manualmente, usa ele
+      if (item.valor_total != null && item.valor_total > 0) {
+        valorItem = item.valor_total;
+      } else {
+        // Senão, usa o cálculo automático (valor_negociado × dias)
+        const periodo = item.periodo_cobranca || item.periodo || "diario";
+        const valorNegociado =
+          periodo === "diario"
+            ? item.valor_negociado_diario
+            : periodo === "semanal"
+            ? item.valor_negociado_semanal
+            : periodo === "quinzenal"
+            ? item.valor_negociado_quinzenal
+            : periodo === "mensal"
+            ? item.valor_negociado_mensal
+            : item.valor_negociado_anual;
+
+        const dias = item.quantidade_dias || 1;
+        valorItem = valorNegociado * dias;
+      }
+
+      grupos[chave].quantidade += 1;
+      grupos[chave].valorUnitario = valorItem / (grupos[chave].quantidade || 1);
+      grupos[chave].valorTotal += valorItem;
+    });
+
+    return Object.values(grupos);
+  };
+
+  const itensAgrupados = agruparPorProduto();
+  const subtotal = itensAgrupados.reduce(
+    (total, item) => total + item.valorTotal,
+    0
+  );
+  const total = subtotal + lease.valor_frete + lease.valor_multa;
+
+  // Traduzir período
+  const traduzirPeriodo = (periodo?: string) => {
+    const periodos: { [key: string]: string } = {
+      diario: "Diário",
+      semanal: "Semanal",
+      quinzenal: "Quinzenal",
+      mensal: "Mensal",
+      anual: "Anual",
+    };
+    return periodos[periodo || "mensal"] || "Mensal";
+  };
+
   return (
     <div
       id={`fatura-print-${lease.id_locacao}`}
       style={{
         width: "210mm",
-        padding: "20mm",
+        minHeight: "297mm",
+        padding: "15mm",
         backgroundColor: "white",
         color: "black",
-        fontSize: "11px",
+        fontSize: "10px",
+        fontFamily: "Arial, sans-serif",
       }}
     >
+      {/* CABEÇALHO */}
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <tbody>
           <tr>
             <td
-              rowSpan={3}
+              rowSpan={2}
               style={{
-                width: 60,
+                width: "120px",
                 textAlign: "center",
-                border: "1px solid black",
+                border: "2px solid black",
+                padding: "10px",
+                verticalAlign: "middle",
               }}
             >
-              <strong>FC</strong>
+              <img
+                src="/logo.png"
+                alt="Logo Ferreira Aluguel"
+                style={{
+                  width: "100px",
+                  height: "auto",
+                  maxHeight: "100px",
+                  objectFit: "contain",
+                }}
+              />
             </td>
             <td
-              colSpan={3}
-              style={{ textAlign: "center", border: "1px solid black" }}
-            >
-              <strong>FANTINI E CRUZ EQUIPAMENTOS PARA CONSTRUÇÃO LTDA</strong>
-              <br />
-              AV PAULO ROBERTO CAVALHEIRO COELHO, 891 - PARQUE CASTELO - CEP:
-              14403-200
-              <br />
-              FONE: (16) 3720-1585 - FRANCA - SP
-              <br />
-              CNPJ: 22.442.280/0001-20 - INSC. EST.: 509.911.648.111
-              <br />
-              E-MAIL: financeiro@fcequipamentos.com.br - SITE:
-              fcequipamentos.com.br
-            </td>
-            <td
-              rowSpan={3}
               style={{
-                width: 80,
                 textAlign: "center",
-                border: "1px solid black",
+                border: "2px solid black",
+                padding: "8px",
+                backgroundColor: "#f5f5f5",
+                wordWrap: "break-word",
+                overflow: "hidden",
               }}
             >
-              <strong>FATURA DE LOCAÇÃO</strong>
+              <strong style={{ fontSize: "13px" }}>
+                FERREIRA ALUGUEL DE MÁQUINAS PARA CONSTRUÇÃO CIVIL
+              </strong>
               <br />
-              Nº <strong>{lease.id_locacao}</strong>
+              <span style={{ fontSize: "8px", lineHeight: "1.4" }}>
+                Rua Jorge Tabah, 2950 - Jardim Angela Rosa
+                <br />
+                CEP: 14.403-615 - Franca/SP - CNPJ: 51.101.682/0001-60
+                <br />
+                Tel: (16) XXXX-XXXX
+              </span>
             </td>
-          </tr>
-          <tr>
-            <td colSpan={3} style={{ border: "1px solid black" }}>
-              &nbsp;
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={3} style={{ border: "1px solid black" }}>
-              &nbsp;
+            <td
+              rowSpan={2}
+              style={{
+                width: "120px",
+                textAlign: "center",
+                border: "2px solid black",
+                padding: "10px",
+                verticalAlign: "middle",
+              }}
+            >
+              <strong style={{ fontSize: "12px" }}>FATURA DE LOCAÇÃO</strong>
+              <br />
+              <strong style={{ fontSize: "16px" }}>
+                Nº {String(lease.id_locacao).padStart(6, "0")}
+              </strong>
+              <br />
+              <span style={{ fontSize: "8px" }}>
+                Data: {formatDate(lease.createdAt)}
+              </span>
             </td>
           </tr>
         </tbody>
       </table>
 
+      {/* INFORMAÇÕES DO CLIENTE E PERÍODO */}
       <table
-        style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "10px",
+        }}
       >
         <tbody>
           <tr>
-            <td style={{ border: "1px solid black", width: "30%" }}>
-              PERÍODO DE REFERÊNCIA
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                width: "25%",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              PERÍODO DE LOCAÇÃO
             </td>
-            <td colSpan={2} style={{ border: "1px solid black" }}>
-              {lease.data_inicio} até {lease.data_prevista_devolucao}
+            <td
+              colSpan={2}
+              style={{ border: "1px solid black", padding: "5px" }}
+            >
+              {formatDate(lease.data_inicio)} até{" "}
+              {formatDate(lease.data_prevista_devolucao)}
             </td>
-            <td style={{ border: "1px solid black" }}>NATUREZA DA OPERAÇÃO</td>
-            <td style={{ border: "1px solid black" }}>
-              Locação de bens móveis
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              NATUREZA DA OPERAÇÃO
+            </td>
+            <td style={{ border: "1px solid black", padding: "5px" }}>
+              Locação de Bens Móveis
             </td>
           </tr>
           <tr>
-            <td style={{ border: "1px solid black" }}>TOMADOR</td>
-            <td colSpan={4} style={{ border: "1px solid black" }}>
-              {lease.cliente?.name}
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              CLIENTE
+            </td>
+            <td
+              colSpan={4}
+              style={{ border: "1px solid black", padding: "5px" }}
+            >
+              <strong>{lease.cliente?.name}</strong>
             </td>
           </tr>
           <tr>
-            <td style={{ border: "1px solid black" }}>ENDEREÇO</td>
-            <td colSpan={4} style={{ border: "1px solid black" }}>
-              {lease.cliente?.endereco || "Endereço não informado"}
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              CPF/CNPJ
+            </td>
+            <td
+              colSpan={2}
+              style={{ border: "1px solid black", padding: "5px" }}
+            >
+              {lease.cliente?.cpf_cnpj}
+            </td>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              TELEFONE
+            </td>
+            <td style={{ border: "1px solid black", padding: "5px" }}>
+              {lease.cliente?.telefone}
             </td>
           </tr>
           <tr>
-            <td style={{ border: "1px solid black" }}>ENTREGA OBRA</td>
-            <td colSpan={4} style={{ border: "1px solid black" }}>
-              {lease.rua_locacao}, {lease.numero_locacao} -{" "}
-              {lease.bairro_locacao}, {lease.cidade_locacao} -{" "}
-              {lease.estado_locacao}
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              ENDEREÇO DE COBRANÇA
+            </td>
+            <td
+              colSpan={4}
+              style={{ border: "1px solid black", padding: "5px" }}
+            >
+              {lease.cliente?.rua_cobranca}, {lease.cliente?.numero_cobranca}
+              {lease.cliente?.complemento_cobranca
+                ? ` - ${lease.cliente.complemento_cobranca}`
+                : ""}{" "}
+              - {lease.cliente?.bairro_cobranca}
+              <br />
+              {lease.cliente?.cidade_cobranca}/{lease.cliente?.estado_cobranca}{" "}
+              - CEP: {lease.cliente?.cep_cobranca}
+            </td>
+          </tr>
+          <tr>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+              }}
+            >
+              LOCAL DE ENTREGA/OBRA
+            </td>
+            <td
+              colSpan={4}
+              style={{ border: "1px solid black", padding: "5px" }}
+            >
+              {lease.rua_locacao}, {lease.numero_locacao}
+              {lease.complemento_locacao ? ` - ${lease.complemento_locacao}` : ""} - {lease.bairro_locacao}
+              <br />
+              {lease.cidade_locacao}/{lease.estado_locacao} - CEP:{" "}
+              {lease.cep_locacao}
             </td>
           </tr>
         </tbody>
       </table>
+
+      {/* TABELA DE EQUIPAMENTOS */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "15px",
+        }}
+      >
+        <thead>
+          <tr style={{ backgroundColor: "#333", color: "white" }}>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "5%",
+              }}
+            >
+              ITEM
+            </th>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "40%",
+              }}
+            >
+              EQUIPAMENTO
+            </th>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "10%",
+              }}
+            >
+              QTD
+            </th>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "12%",
+              }}
+            >
+              PERÍODO
+            </th>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "15%",
+              }}
+            >
+              VALOR UNITÁRIO
+            </th>
+            <th
+              style={{
+                border: "1px solid black",
+                padding: "8px",
+                width: "18%",
+              }}
+            >
+              VALOR TOTAL
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {itensAgrupados.map((item, index) => {
+            return (
+              <tr key={index}>
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: "5px",
+                    textAlign: "center",
+                  }}
+                >
+                  {index + 1}
+                </td>
+                <td style={{ border: "1px solid black", padding: "5px" }}>
+                  {item.nome}
+                  {item.marca && (
+                    <span style={{ fontSize: "8px", color: "#666" }}>
+                      <br />
+                      Marca: {item.marca}
+                    </span>
+                  )}
+                </td>
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: "5px",
+                    textAlign: "center",
+                  }}
+                >
+                  {item.quantidade}
+                </td>
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: "5px",
+                    textAlign: "center",
+                  }}
+                >
+                  {traduzirPeriodo(item.periodo)}
+                </td>
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: "5px",
+                    textAlign: "right",
+                  }}
+                >
+                  {formatCurrency(item.valorUnitario)}
+                </td>
+                <td
+                  style={{
+                    border: "1px solid black",
+                    padding: "5px",
+                    textAlign: "right",
+                  }}
+                >
+                  {formatCurrency(item.valorTotal)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* RESUMO FINANCEIRO */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "10px",
+        }}
+      >
+        <tbody>
+          <tr>
+            <td style={{ width: "70%" }}>&nbsp;</td>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+                textAlign: "right",
+              }}
+            >
+              SUBTOTAL:
+            </td>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                textAlign: "right",
+                fontWeight: "bold",
+              }}
+            >
+              {formatCurrency(subtotal)}
+            </td>
+          </tr>
+          <tr>
+            <td>&nbsp;</td>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                fontWeight: "bold",
+                backgroundColor: "#e8e8e8",
+                textAlign: "right",
+              }}
+            >
+              FRETE:
+            </td>
+            <td
+              style={{
+                border: "1px solid black",
+                padding: "5px",
+                textAlign: "right",
+              }}
+            >
+              {formatCurrency(lease.valor_frete)}
+            </td>
+          </tr>
+          {lease.valor_multa > 0 && (
+            <tr>
+              <td>&nbsp;</td>
+              <td
+                style={{
+                  border: "1px solid black",
+                  padding: "5px",
+                  fontWeight: "bold",
+                  backgroundColor: "#e8e8e8",
+                  textAlign: "right",
+                }}
+              >
+                MULTA:
+              </td>
+              <td
+                style={{
+                  border: "1px solid black",
+                  padding: "5px",
+                  textAlign: "right",
+                  color: "red",
+                }}
+              >
+                {formatCurrency(lease.valor_multa)}
+              </td>
+            </tr>
+          )}
+          <tr>
+            <td>&nbsp;</td>
+            <td
+              style={{
+                border: "2px solid black",
+                padding: "8px",
+                fontWeight: "bold",
+                backgroundColor: "#333",
+                color: "white",
+                textAlign: "right",
+                fontSize: "12px",
+              }}
+            >
+              TOTAL:
+            </td>
+            <td
+              style={{
+                border: "2px solid black",
+                padding: "8px",
+                textAlign: "right",
+                fontWeight: "bold",
+                fontSize: "12px",
+              }}
+            >
+              {formatCurrency(total)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* RODAPÉ - ASSINATURAS */}
+      <div
+        style={{
+          marginTop: "40px",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ textAlign: "center", width: "45%" }}>
+          <div
+            style={{
+              borderTop: "1px solid black",
+              paddingTop: "5px",
+              marginTop: "40px",
+            }}
+          >
+            <strong>FERREIRA ALUGUEL DE MÁQUINAS</strong>
+            <br />
+            Locador
+          </div>
+        </div>
+        <div style={{ textAlign: "center", width: "45%" }}>
+          <div
+            style={{
+              borderTop: "1px solid black",
+              paddingTop: "5px",
+              marginTop: "40px",
+            }}
+          >
+            <strong>{lease.cliente?.name}</strong>
+            <br />
+            Locatário
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -12,6 +12,7 @@ interface PatchLeasePayload {
   cidade_locacao?: string;
   estado_locacao?: string;
   cep_locacao?: string;
+  telefone_contato?: string | null;
   data_inicio?: string;
   data_prevista_devolucao?: string;
   data_real_devolucao?: string | null;

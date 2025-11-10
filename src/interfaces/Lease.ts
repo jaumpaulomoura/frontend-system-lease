@@ -11,6 +11,7 @@ export interface LeaseProps {
   cidade_locacao: string;
   estado_locacao: string;
   cep_locacao: string;
+  telefone_contato?: string;
   data_inicio: string; // Pode ser um formato ISO string
   data_prevista_devolucao: string; // Pode ser um formato ISO string
   data_real_devolucao?: string; // Pode ser um formato ISO string

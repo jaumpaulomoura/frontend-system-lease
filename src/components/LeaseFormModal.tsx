@@ -1,6 +1,4 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -44,6 +42,14 @@ type Periodo = "diario" | "semanal" | "quinzenal" | "mensal" | "anual";
 interface ClientProps {
   id: number;
   name: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  telefone?: string;
 }
 
 interface LeaseRequestPayload {
@@ -56,6 +62,7 @@ interface LeaseRequestPayload {
   cidade_locacao: string;
   estado_locacao: string;
   cep_locacao: string;
+  telefone_contato?: string;
   data_inicio: string;
   data_prevista_devolucao: string;
   data_real_devolucao?: string;
@@ -89,6 +96,7 @@ export type FormData = {
   cidade_locacao: string | null;
   estado_locacao: string | null;
   cep_locacao: string | null;
+  telefone_contato?: string | null;
   data_inicio: string | null;
   data_prevista_devolucao: string | null;
   data_real_devolucao?: string | null;
@@ -173,6 +181,18 @@ export default function LeaseFormModal({
     valorCalculado: 0,
     diasLocacao: 0,
   });
+  const [valorTotalEditavel, setValorTotalEditavel] = useState<string>("");
+  const [valorManualmenteEditado, setValorManualmenteEditado] = useState(false);
+
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   const form = useForm<FormData>({
     mode: "onChange",
@@ -185,8 +205,9 @@ export default function LeaseFormModal({
       cidade_locacao: "",
       estado_locacao: "",
       cep_locacao: "",
-      data_inicio: "",
-      data_prevista_devolucao: "",
+      telefone_contato: "",
+      data_inicio: getCurrentDateTime(),
+      data_prevista_devolucao: getCurrentDateTime(),
       data_real_devolucao: "",
       data_pagamento: "",
       valor_total: 0,
@@ -204,9 +225,15 @@ export default function LeaseFormModal({
   const calcularDiferencaDias = (dataInicio: string, dataFim: string): number => {
     const inicio = new Date(dataInicio);
     const fim = new Date(dataFim);
-    const diff =
-      Math.floor((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return diff;
+
+    // Calcula diferença em horas
+    const diffEmHoras = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
+
+    // Arredonda para cima (qualquer fração de dia conta como dia inteiro)
+    // Exemplo: 44 horas = 1.83 dias → arredonda para 2 dias
+    const dias = Math.ceil(diffEmHoras / 24);
+
+    return dias > 0 ? dias : 1; // Mínimo 1 dia
   };
 
   const calcularValorComRegra = (
@@ -246,12 +273,22 @@ export default function LeaseFormModal({
     if (selectedLease) {
       setQuantity(1);
       setSelectedStocks(selectedLease.availableStock.slice(0, 1));
+      setValorTotalEditavel(""); // Limpa ao mudar produto
+      setValorManualmenteEditado(false); // Reseta flag
     }
   }, [selectedLease]);
 
   useEffect(() => {
     calcularDias();
   }, [form.watch("data_inicio"), form.watch("data_prevista_devolucao")]);
+
+  // Pré-preencher valor total automaticamente (só se não foi editado manualmente)
+  useEffect(() => {
+    if (itemRegra.valorCalculado && diasLocacao > 0 && !valorManualmenteEditado) {
+      const totalAutomatico = itemRegra.valorCalculado * diasLocacao;
+      setValorTotalEditavel(totalAutomatico.toFixed(2));
+    }
+  }, [itemRegra.valorCalculado, diasLocacao, valorManualmenteEditado]);
 
   const handleAddLease = () => {
     const dataInicio = form.watch("data_inicio");
@@ -291,12 +328,15 @@ export default function LeaseFormModal({
       valor_negociado_anual: valorPorPeriodo.anual,
       quantidade_dias: dias,
       periodo_cobranca: itemRegra.periodo,
+      valor_total: valorTotalEditavel ? Number(valorTotalEditavel) : null,
     }));
 
     setLeaseItems([...leaseItems, ...novosItens]);
     setSelectedLease(null);
     setSelectedStocks([]);
     setQuantity(1);
+    setValorTotalEditavel(""); // Limpa o campo editável
+    setValorManualmenteEditado(false); // Reseta flag
   };
 
   const handleRemoveLeaseItem = (index: number) => {
@@ -306,17 +346,19 @@ export default function LeaseFormModal({
 
   const valorTotalItens = useMemo(() => {
     return leaseItems.reduce((total, item) => {
+      // Se o item tem valor_total definido (editado manualmente), usa ele
+      if (item.valor_total) {
+        return total + Number(item.valor_total);
+      }
+
+      // Caso contrário, calcula: valor unitário × dias
       if (!item.periodo_cobranca || !item.quantidade_dias) return total;
 
       const valorNegociado = item[
         `valor_negociado_${item.periodo_cobranca}` as keyof LeaseItemProps
       ] as number || 0;
 
-      let valorItem = 0;
-
-      // Como o banco salva valores divididos (valor diário),
-      // todos os períodos se reduzem à mesma fórmula: valorDiário × dias
-      valorItem = valorNegociado * item.quantidade_dias;
+      const valorItem = valorNegociado * item.quantidade_dias;
 
       return total + valorItem;
     }, 0);
@@ -359,7 +401,7 @@ export default function LeaseFormModal({
             <Box
               sx={{
                 height: "70vh",
-                width: "40%",
+                width: "55%",
                 pr: 2,
                 overflowY: "auto",
                 borderRight: "1px solid #e0e0e0",
@@ -371,9 +413,21 @@ export default function LeaseFormModal({
                 value={
                   clients.find((c) => c.id === form.watch("cliente_id")) || null
                 }
-                onChange={(_, newValue) =>
-                  form.setValue("cliente_id", newValue?.id || 0)
-                }
+                onChange={(_, newValue) => {
+                  form.setValue("cliente_id", newValue?.id || 0);
+
+                  // Preenche automaticamente o endereço da locação com o endereço do cliente
+                  if (newValue) {
+                    form.setValue("rua_locacao", capitalizeWords(newValue.rua || ""));
+                    form.setValue("numero_locacao", newValue.numero || "");
+                    form.setValue("complemento_locacao", capitalizeWords(newValue.complemento || ""));
+                    form.setValue("bairro_locacao", capitalizeWords(newValue.bairro || ""));
+                    form.setValue("cidade_locacao", capitalizeWords(newValue.cidade || ""));
+                    form.setValue("estado_locacao", newValue.estado?.toUpperCase() || "");
+                    form.setValue("cep_locacao", newValue.cep || "");
+                    form.setValue("telefone_contato", newValue.telefone || "");
+                  }
+                }}
                 renderInput={(params) => (
                   <TextField {...params} label="Cliente" required />
                 )}
@@ -383,7 +437,7 @@ export default function LeaseFormModal({
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "2fr 0.8fr 1.2fr",
                   gap: 2,
                   mt: 2,
                 }}
@@ -393,6 +447,7 @@ export default function LeaseFormModal({
                   label="Rua"
                   size="small"
                   required
+                  InputLabelProps={{ shrink: true }}
                   onChange={(e) => {
                     const capitalized = capitalizeWords(e.target.value);
                     form.setValue("rua_locacao", capitalized, {
@@ -405,16 +460,15 @@ export default function LeaseFormModal({
                   label="Número"
                   size="small"
                   required
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  {...form.register("complemento_locacao")}
+                  label="Complemento"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
                 />
               </Box>
-
-              <TextField
-                {...form.register("complemento_locacao")}
-                label="Complemento"
-                size="small"
-                fullWidth
-                sx={{ mt: 2 }}
-              />
 
               <Box
                 sx={{
@@ -429,6 +483,7 @@ export default function LeaseFormModal({
                   label="Bairro"
                   size="small"
                   required
+                  InputLabelProps={{ shrink: true }}
                   onChange={(e) => {
                     const capitalized = capitalizeWords(e.target.value);
                     form.setValue("bairro_locacao", capitalized, {
@@ -441,6 +496,7 @@ export default function LeaseFormModal({
                   label="Cidade"
                   size="small"
                   required
+                  InputLabelProps={{ shrink: true }}
                   onChange={(e) => {
                     const capitalized = capitalizeWords(e.target.value);
                     form.setValue("cidade_locacao", capitalized, {
@@ -472,6 +528,7 @@ export default function LeaseFormModal({
                   fullWidth
                   margin="normal"
                   required
+                  InputLabelProps={{ shrink: true }}
                   error={!!form.formState.errors.estado_locacao}
                   helperText={form.formState.errors.estado_locacao?.message}
                   variant="outlined"
@@ -496,6 +553,7 @@ export default function LeaseFormModal({
                   fullWidth
                   margin="normal"
                   required
+                  InputLabelProps={{ shrink: true }}
                   error={!!form.formState.errors.cep_locacao}
                   helperText={form.formState.errors.cep_locacao?.message}
                   variant="outlined"
@@ -510,6 +568,41 @@ export default function LeaseFormModal({
                     });
                   }}
                 />
+
+                <TextField
+                  {...form.register("telefone_contato")}
+                  label="Telefone de Contato"
+                  size="small"
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{ shrink: true }}
+                  variant="outlined"
+                  inputProps={{
+                    maxLength: 15,
+                  }}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    let formattedValue = value;
+                    if (value.length <= 10) {
+                      formattedValue = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, (match, p1, p2, p3) => {
+                        if (p3) return `(${p1}) ${p2}-${p3}`;
+                        if (p2) return `(${p1}) ${p2}`;
+                        if (p1) return `(${p1}`;
+                        return match;
+                      });
+                    } else {
+                      formattedValue = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, (match, p1, p2, p3) => {
+                        if (p3) return `(${p1}) ${p2}-${p3}`;
+                        if (p2) return `(${p1}) ${p2}`;
+                        if (p1) return `(${p1}`;
+                        return match;
+                      });
+                    }
+                    form.setValue("telefone_contato", formattedValue, {
+                      shouldValidate: true,
+                    });
+                  }}
+                />
               </Box>
 
               <Box
@@ -520,40 +613,109 @@ export default function LeaseFormModal({
                   mt: 2,
                 }}
               >
-                <TextField
-                  {...form.register("data_inicio")}
-                  label="Data Início"
-                  type="date"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  required
-                />
-                <TextField
-                  {...form.register("data_prevista_devolucao")}
-                  label="Previsão Devolução"
-                  type="date"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  required
-                  onChange={(e) => {
-                    form.setValue("data_prevista_devolucao", e.target.value);
-                    calcularDias();
-                  }}
-                  helperText={
-                    diasLocacao > 0
-                      ? `Período de ${diasLocacao} dia${
-                          diasLocacao !== 1 ? "s" : ""
-                        }`
-                      : undefined
-                  }
-                />
-                <TextField
-                  {...form.register("data_pagamento")}
-                  label="Data do pagamento"
-                  type="date"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                />
+                {/* Data de Início */}
+                <Box>
+                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                    Data e Hora de Início *
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      type="date"
+                      size="small"
+                      sx={{ flex: 1 }}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                      value={form.watch("data_inicio")?.split("T")[0] || ""}
+                      onChange={(e) => {
+                        const currentTime = form.watch("data_inicio")?.split("T")[1] || "08:00";
+                        form.setValue("data_inicio", `${e.target.value}T${currentTime}`);
+                      }}
+                    />
+                    <TextField
+                      type="time"
+                      size="small"
+                      sx={{ width: 120 }}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                      value={form.watch("data_inicio")?.split("T")[1] || "08:00"}
+                      onChange={(e) => {
+                        const currentDate = form.watch("data_inicio")?.split("T")[0] || new Date().toISOString().split("T")[0];
+                        form.setValue("data_inicio", `${currentDate}T${e.target.value}`);
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Data Prevista de Devolução */}
+                <Box>
+                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                    Previsão de Devolução *
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      type="date"
+                      size="small"
+                      sx={{ flex: 1 }}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                      value={form.watch("data_prevista_devolucao")?.split("T")[0] || ""}
+                      onChange={(e) => {
+                        const currentTime = form.watch("data_prevista_devolucao")?.split("T")[1] || "18:00";
+                        form.setValue("data_prevista_devolucao", `${e.target.value}T${currentTime}`);
+                        calcularDias();
+                      }}
+                      helperText={
+                        diasLocacao > 0
+                          ? `${diasLocacao} dia${diasLocacao !== 1 ? "s" : ""}`
+                          : undefined
+                      }
+                    />
+                    <TextField
+                      type="time"
+                      size="small"
+                      sx={{ width: 120 }}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                      value={form.watch("data_prevista_devolucao")?.split("T")[1] || "18:00"}
+                      onChange={(e) => {
+                        const currentDate = form.watch("data_prevista_devolucao")?.split("T")[0] || new Date().toISOString().split("T")[0];
+                        form.setValue("data_prevista_devolucao", `${currentDate}T${e.target.value}`);
+                        calcularDias();
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Data de Pagamento */}
+                <Box>
+                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 500 }}>
+                    Data do Pagamento
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                      type="date"
+                      size="small"
+                      sx={{ flex: 1 }}
+                      InputLabelProps={{ shrink: true }}
+                      value={form.watch("data_pagamento")?.split("T")[0] || ""}
+                      onChange={(e) => {
+                        const currentTime = form.watch("data_pagamento")?.split("T")[1] || "12:00";
+                        form.setValue("data_pagamento", e.target.value ? `${e.target.value}T${currentTime}` : "");
+                      }}
+                    />
+                    <TextField
+                      type="time"
+                      size="small"
+                      sx={{ width: 120 }}
+                      InputLabelProps={{ shrink: true }}
+                      value={form.watch("data_pagamento")?.split("T")[1] || "12:00"}
+                      onChange={(e) => {
+                        const currentDate = form.watch("data_pagamento")?.split("T")[0] || new Date().toISOString().split("T")[0];
+                        form.setValue("data_pagamento", `${currentDate}T${e.target.value}`);
+                      }}
+                    />
+                  </Box>
+                </Box>
               </Box>
 
               <Box
@@ -568,6 +730,7 @@ export default function LeaseFormModal({
                   {...form.register("valor_total")}
                   label="Valor Total"
                   size="small"
+                  InputLabelProps={{ shrink: true }}
                   InputProps={{
                     readOnly: true,
                     startAdornment: (
@@ -583,6 +746,7 @@ export default function LeaseFormModal({
                   })}
                   label="Valor Frete"
                   size="small"
+                  InputLabelProps={{ shrink: true }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">R$</InputAdornment>
@@ -599,13 +763,14 @@ export default function LeaseFormModal({
                 multiline
                 rows={2}
                 fullWidth
+                InputLabelProps={{ shrink: true }}
                 sx={{ mt: 2 }}
               />
             </Box>
 
             {/* Seção de produtos - lado direito */}
-            <Box sx={{ width: "60%", pl: 2, overflowY: "auto" }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
+            <Box sx={{ width: "45%", pl: 2, overflowY: "auto" }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
                 Produtos da Locação
               </Typography>
 
@@ -613,12 +778,12 @@ export default function LeaseFormModal({
                 sx={{
                   border: "1px solid #e0e0e0",
                   borderRadius: 1,
-                  p: 2,
-                  maxHeight: 300,
+                  p: 1.5,
+                  maxHeight: 250,
                   overflowY: "auto",
                 }}
               >
-                <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 500 }}>
                   Adicionar Produto
                 </Typography>
                 <Autocomplete
@@ -697,7 +862,7 @@ export default function LeaseFormModal({
                       fullWidth
                     />
                   )}
-                  sx={{ mb: 2 }}
+                  sx={{ mb: 1.5 }}
                 />
 
                 {selectedLease && (
@@ -725,18 +890,11 @@ export default function LeaseFormModal({
                         min: 1,
                         max: selectedLease.totalAvailable,
                       }}
-                      sx={{ mb: 2 }}
+                      sx={{ mb: 1.5 }}
                     />
 
-                    {/* Campos da Regra Editáveis */}
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                        gap: 2,
-                        mb: 2,
-                      }}
-                    >
+                    {/* Campos da Regra - OCULTOS (processamento em background) */}
+                    <Box sx={{ display: "none" }}>
                       <TextField
                         select
                         label="Período"
@@ -856,10 +1014,65 @@ export default function LeaseFormModal({
                       />
                     </Box>
 
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      Valor Base: R$ {itemRegra.valorBase.toFixed(2)} |
-                      Valor Final: R$ {itemRegra.valorCalculado.toFixed(2)}
-                    </Typography>
+                    {/* Valor Unitário e Valor Total - LADO A LADO */}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 1.5,
+                        mb: 1.5,
+                      }}
+                    >
+                      {/* Valor Unitário - CALCULADO AUTOMATICAMENTE */}
+                      <TextField
+                        label="Valor Unitário"
+                        size="small"
+                        fullWidth
+                        value={itemRegra.valorCalculado.toFixed(2)}
+                        InputProps={{
+                          readOnly: true,
+                          startAdornment: (
+                            <InputAdornment position="start">R$</InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          "& .MuiInputBase-input": {
+                            fontWeight: "bold",
+                            backgroundColor: "#f5f5f5"
+                          }
+                        }}
+                        helperText="Calculado automaticamente"
+                      />
+
+                      {/* Valor Total - EDITÁVEL */}
+                      <TextField
+                        label="Valor Total"
+                        type="number"
+                        size="small"
+                        fullWidth
+                        value={valorTotalEditavel}
+                        onChange={(e) => {
+                          const novoValorTotal = e.target.value;
+                          setValorTotalEditavel(novoValorTotal);
+                          setValorManualmenteEditado(true);
+
+                          // Calcula o valor unitário baseado no total digitado
+                          if (novoValorTotal && diasLocacao > 0) {
+                            const valorUnitarioCalculado = Number(novoValorTotal) / diasLocacao;
+                            setItemRegra((prev) => ({
+                              ...prev,
+                              valorCalculado: valorUnitarioCalculado
+                            }));
+                          }
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">R$</InputAdornment>
+                          ),
+                        }}
+                        helperText={`Digite o total (${diasLocacao} ${diasLocacao !== 1 ? 'dias' : 'dia'})`}
+                      />
+                    </Box>
 
                     <Button
                       onClick={handleAddLease}
@@ -875,50 +1088,60 @@ export default function LeaseFormModal({
 
               {/* Lista de itens adicionados */}
               {leaseItems.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
                     Itens Adicionados
                   </Typography>
                   <TableContainer>
-                    <Table size="small">
+                    <Table size="small" sx={{ fontSize: '0.875rem' }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell>Produto</TableCell>
-                          <TableCell>Patrimônio</TableCell>
-                          <TableCell>Período</TableCell>
-                          <TableCell>Valor</TableCell>
-                          <TableCell>Ações</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Produto</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Patrimônio</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Dias</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Vlr Unit.</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Total</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Ações</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {leaseItems.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              {item.patrimonio?.produto?.name || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {item.patrimonio?.numero_patrimonio || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={item.periodo_cobranca}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              R$ {item.periodo_cobranca ? (item[`valor_negociado_${item.periodo_cobranca}` as keyof LeaseItemProps] as number || 0).toFixed(2) : '0.00'}
-                            </TableCell>
-                            <TableCell>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveLeaseItem(index)}
-                                color="error"
-                              >
-                                <CancelIcon fontSize="small" />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {leaseItems.map((item, index) => {
+                          const valorUnitario = item.periodo_cobranca
+                            ? (item[`valor_negociado_${item.periodo_cobranca}` as keyof LeaseItemProps] as number || 0)
+                            : 0;
+                          const dias = item.quantidade_dias || 0;
+                          const valorTotal = item.valor_total || (valorUnitario * dias);
+
+                          return (
+                            <TableRow key={index}>
+                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                {item.patrimonio?.produto?.name || "N/A"}
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                {item.patrimonio?.numero_patrimonio || "N/A"}
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                {dias}
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                R$ {valorUnitario.toFixed(2)}
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                                R$ {valorTotal.toFixed(2)}
+                              </TableCell>
+                              <TableCell sx={{ py: 0.5 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveLeaseItem(index)}
+                                  color="error"
+                                  sx={{ p: 0.5 }}
+                                >
+                                  <CancelIcon fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>

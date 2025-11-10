@@ -735,16 +735,19 @@ export default function LeasePage() {
         )
       );
 
-      await patchLease(
-        {
-          id_locacao: leaseParaDevolver.id_locacao,
-          data_real_devolucao: new Date(dataDevolucao).toISOString(),
-          data_pagamento: new Date(dataPagamento).toISOString(),
-          valor_multa: valorMulta,
-          status: "Finalizado",
-        },
-        leaseParaDevolver.id_locacao
-      );
+      const updateData: any = {
+        id_locacao: leaseParaDevolver.id_locacao,
+        data_real_devolucao: new Date(dataDevolucao).toISOString(),
+        valor_multa: valorMulta,
+        status: "Finalizado",
+      };
+
+      // Só envia data_pagamento se ainda não foi pago
+      if (leaseParaDevolver.data_pagamento == null && dataPagamento) {
+        updateData.data_pagamento = new Date(dataPagamento).toISOString();
+      }
+
+      await patchLease(updateData, leaseParaDevolver.id_locacao);
 
       await fetchLeases();
 

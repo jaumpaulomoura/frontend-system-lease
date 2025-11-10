@@ -25,11 +25,6 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!token) {
-      setError("Token inválido");
-      return;
-    }
-
     if (newPassword !== confirmPassword) {
       setError("As senhas não coincidem");
       return;
@@ -45,10 +40,26 @@ export default function ResetPasswordPage() {
     setSuccess("");
 
     try {
-      await getResetPassword({ token, password: newPassword });
-      setSuccess("Senha redefinida com sucesso!");
+      if (token) {
+        // Fluxo de "esqueci senha" - usa token da URL
+        await getResetPassword({ token, password: newPassword });
+      } else {
+        // Fluxo de "alterar senha" - usa token de autenticação (logado)
+        const response = await fetch("/api/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newPassword }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Erro ao alterar senha");
+        }
+      }
+
+      setSuccess("Senha alterada com sucesso!");
       setTimeout(() => {
-        router.push("/"); // ou /login, onde você quiser levar o usuário
+        router.push("/dashboard"); // Redireciona para dashboard se logado
       }, 2000);
     } catch (err: any) {
       setError(err.message || "Erro ao redefinir senha");

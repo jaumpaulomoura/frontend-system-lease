@@ -15,6 +15,7 @@ export interface LeaseItemProps {
   valor_negociado_quinzenal: number;
   valor_negociado_mensal: number;
   valor_negociado_anual: number;
+  valor_total?: number | null; // NOVO: Valor total editável/opcional - sobrescreve o cálculo automático
   createdAt?: Date | string; // Melhor como Date, mas pode aceitar string
   updatedAt?: Date | string;
   patrimonio: StockProps; // "stocks" foi alterado para "patrimonio" para consistência
