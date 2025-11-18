@@ -282,13 +282,13 @@ export default function LeaseFormModal({
     calcularDias();
   }, [form.watch("data_inicio"), form.watch("data_prevista_devolucao")]);
 
-  // Pré-preencher valor total automaticamente (só se não foi editado manualmente)
+  // Pré-preencher valor total automaticamente (já multiplicado pela quantidade)
   useEffect(() => {
-    if (itemRegra.valorCalculado && diasLocacao > 0 && !valorManualmenteEditado) {
-      const totalAutomatico = itemRegra.valorCalculado * diasLocacao;
+    if (itemRegra.valorCalculado && diasLocacao > 0 && quantity > 0 && !valorManualmenteEditado) {
+      const totalAutomatico = itemRegra.valorCalculado * diasLocacao * quantity;
       setValorTotalEditavel(totalAutomatico.toFixed(2));
     }
-  }, [itemRegra.valorCalculado, diasLocacao, valorManualmenteEditado]);
+  }, [itemRegra.valorCalculado, diasLocacao, quantity, valorManualmenteEditado]);
 
   const handleAddLease = () => {
     const dataInicio = form.watch("data_inicio");
@@ -313,6 +313,11 @@ export default function LeaseFormModal({
       anual: itemRegra.valorCalculado,
     };
 
+    // Se há valor total editável, divide pela quantidade para obter o valor por item
+    const valorTotalPorItem = valorTotalEditavel
+      ? Number(valorTotalEditavel) / quantity
+      : null;
+
     const novosItens: LeaseItemProps[] = selectedStocks.map((stock) => ({
       id: stock.id,
       patrimonio: stock,
@@ -328,7 +333,7 @@ export default function LeaseFormModal({
       valor_negociado_anual: valorPorPeriodo.anual,
       quantidade_dias: dias,
       periodo_cobranca: itemRegra.periodo,
-      valor_total: valorTotalEditavel ? Number(valorTotalEditavel) : null,
+      valor_total: valorTotalPorItem,
     }));
 
     setLeaseItems([...leaseItems, ...novosItens]);
@@ -1044,7 +1049,7 @@ export default function LeaseFormModal({
                         helperText="Calculado automaticamente"
                       />
 
-                      {/* Valor Total - EDITÁVEL */}
+                      {/* Valor Total - EDITÁVEL (já multiplicado pela quantidade) */}
                       <TextField
                         label="Valor Total"
                         type="number"
@@ -1056,9 +1061,9 @@ export default function LeaseFormModal({
                           setValorTotalEditavel(novoValorTotal);
                           setValorManualmenteEditado(true);
 
-                          // Calcula o valor unitário baseado no total digitado
-                          if (novoValorTotal && diasLocacao > 0) {
-                            const valorUnitarioCalculado = Number(novoValorTotal) / diasLocacao;
+                          // Calcula o valor unitário baseado no total digitado e quantidade
+                          if (novoValorTotal && diasLocacao > 0 && quantity > 0) {
+                            const valorUnitarioCalculado = Number(novoValorTotal) / (diasLocacao * quantity);
                             setItemRegra((prev) => ({
                               ...prev,
                               valorCalculado: valorUnitarioCalculado
@@ -1070,7 +1075,7 @@ export default function LeaseFormModal({
                             <InputAdornment position="start">R$</InputAdornment>
                           ),
                         }}
-                        helperText={`Digite o total (${diasLocacao} ${diasLocacao !== 1 ? 'dias' : 'dia'})`}
+                        helperText={`${quantity} ${quantity !== 1 ? 'itens' : 'item'} × ${diasLocacao} ${diasLocacao !== 1 ? 'dias' : 'dia'}`}
                       />
                     </Box>
 
@@ -1097,7 +1102,7 @@ export default function LeaseFormModal({
                       <TableHead>
                         <TableRow>
                           <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Produto</TableCell>
-                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Patrimônio</TableCell>
+                          <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Qtd</TableCell>
                           <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Dias</TableCell>
                           <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Vlr Unit.</TableCell>
                           <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>Total</TableCell>
@@ -1105,43 +1110,84 @@ export default function LeaseFormModal({
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {leaseItems.map((item, index) => {
-                          const valorUnitario = item.periodo_cobranca
-                            ? (item[`valor_negociado_${item.periodo_cobranca}` as keyof LeaseItemProps] as number || 0)
-                            : 0;
-                          const dias = item.quantidade_dias || 0;
-                          const valorTotal = item.valor_total || (valorUnitario * dias);
+                        {(() => {
+                          // Agrupar itens por produto
+                          const groupedItems = leaseItems.reduce((acc, item, index) => {
+                            const productId = item.patrimonio?.produto?.id;
+                            const productName = item.patrimonio?.produto?.name || "N/A";
 
-                          return (
-                            <TableRow key={index}>
-                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
-                                {item.patrimonio?.produto?.name || "N/A"}
-                              </TableCell>
-                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
-                                {item.patrimonio?.numero_patrimonio || "N/A"}
-                              </TableCell>
-                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
-                                {dias}
-                              </TableCell>
-                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
-                                R$ {valorUnitario.toFixed(2)}
-                              </TableCell>
-                              <TableCell sx={{ py: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
-                                R$ {valorTotal.toFixed(2)}
-                              </TableCell>
-                              <TableCell sx={{ py: 0.5 }}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRemoveLeaseItem(index)}
-                                  color="error"
-                                  sx={{ p: 0.5 }}
-                                >
-                                  <CancelIcon fontSize="small" />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                            if (!productId) return acc;
+
+                            if (!acc[productId]) {
+                              acc[productId] = {
+                                productName,
+                                quantidade: 0,
+                                dias: item.quantidade_dias || 0,
+                                valorUnitario: 0,
+                                valorTotalPorItem: 0,
+                                indices: []
+                              };
+                            }
+
+                            const valorUnitario = item.periodo_cobranca
+                              ? (item[`valor_negociado_${item.periodo_cobranca}` as keyof LeaseItemProps] as number || 0)
+                              : 0;
+                            const valorTotalPorItem = item.valor_total || (valorUnitario * (item.quantidade_dias || 0));
+
+                            acc[productId].quantidade += 1;
+                            acc[productId].valorUnitario = valorUnitario;
+                            acc[productId].valorTotalPorItem = valorTotalPorItem;
+                            acc[productId].indices.push(index);
+
+                            return acc;
+                          }, {} as Record<number, {
+                            productName: string;
+                            quantidade: number;
+                            dias: number;
+                            valorUnitario: number;
+                            valorTotalPorItem: number;
+                            indices: number[];
+                          }>);
+
+                          return Object.values(groupedItems).map((group, groupIndex) => {
+                            // Calcula o total: (valor por item) × quantidade
+                            const valorTotalAgrupado = group.valorTotalPorItem * group.quantidade;
+
+                            return (
+                              <TableRow key={groupIndex}>
+                                <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                  {group.productName}
+                                </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                                  {group.quantidade}
+                                </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                  {group.dias}
+                                </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                                  R$ {group.valorUnitario.toFixed(2)}
+                                </TableCell>
+                                <TableCell sx={{ py: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                                  R$ {valorTotalAgrupado.toFixed(2)}
+                                </TableCell>
+                                <TableCell sx={{ py: 0.5 }}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      // Remove todos os itens deste produto
+                                      const novosItens = leaseItems.filter((_, i) => !group.indices.includes(i));
+                                      setLeaseItems(novosItens);
+                                    }}
+                                    color="error"
+                                    sx={{ p: 0.5 }}
+                                  >
+                                    <CancelIcon fontSize="small" />
+                                  </IconButton>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          });
+                        })()}
                       </TableBody>
                     </Table>
                   </TableContainer>

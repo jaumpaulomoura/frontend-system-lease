@@ -195,6 +195,7 @@ export default function LeasePage() {
     null
   );
   const [valorMulta, setValorMulta] = useState<number>(0);
+  const [valorDesconto, setValorDesconto] = useState<number>(0);
   const [valorNegociado, setValorNegociado] = useState<number>(0);
 
   const [filterStatus, setFilterStatus] = useState<string>("");
@@ -628,6 +629,9 @@ export default function LeasePage() {
               Number(item.valor_negociado_quinzenal) || 0,
             valor_negociado_mensal: Number(item.valor_negociado_mensal) || 0,
             valor_negociado_anual: 0,
+            quantidade_dias: item.quantidade_dias || 0,
+            periodo_cobranca: item.periodo_cobranca || "diario",
+            valor_total: item.valor_total || 0,
           };
         }),
       };
@@ -739,6 +743,7 @@ export default function LeasePage() {
         id_locacao: leaseParaDevolver.id_locacao,
         data_real_devolucao: new Date(dataDevolucao).toISOString(),
         valor_multa: valorMulta,
+        valor_desconto: valorDesconto,
         status: "Finalizado",
       };
 
@@ -1989,7 +1994,7 @@ export default function LeasePage() {
               {/* </Paper> */}
             </Box>
 
-            <Box sx={{ flexGrow: 1, marginTop: "10px" }}>
+            <Box sx={{ width: "100%", marginTop: "10px" }}>
               <DataGrid
                 rows={filteredLeases}
                 columns={columns}
@@ -2000,10 +2005,13 @@ export default function LeasePage() {
                 }}
                 pageSizeOptions={[5, 10, 25]}
                 sx={{
-                  height: "100%",
+                  maxHeight: "calc(100vh - 200px)",
                   "& .MuiDataGrid-columnHeaders": {
                     backgroundColor: "primary.main",
                     color: "primary.contrastText",
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    maxHeight: "calc(100vh - 280px)",
                   },
                 }}
               />
@@ -2074,6 +2082,20 @@ export default function LeasePage() {
                     }}
                     value={valorMulta}
                     onChange={(e) => setValorMulta(Number(e.target.value))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Valor do Desconto (R$)"
+                    type="number"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">R$</InputAdornment>
+                      ),
+                    }}
+                    value={valorDesconto}
+                    onChange={(e) => setValorDesconto(Number(e.target.value))}
                   />
                 </Grid>
 

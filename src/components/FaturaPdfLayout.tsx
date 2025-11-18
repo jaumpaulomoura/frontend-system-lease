@@ -51,11 +51,11 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
 
       // Se valor_total foi editado manualmente, usa ele
       if (item.valor_total != null && item.valor_total > 0) {
-        valorItem = item.valor_total;
+        valorItem = Number(item.valor_total);
       } else {
         // Senão, usa o cálculo automático (valor_negociado × dias)
         const periodo = item.periodo_cobranca || item.periodo || "diario";
-        const valorNegociado =
+        const valorNegociado = Number(
           periodo === "diario"
             ? item.valor_negociado_diario
             : periodo === "semanal"
@@ -64,9 +64,10 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
             ? item.valor_negociado_quinzenal
             : periodo === "mensal"
             ? item.valor_negociado_mensal
-            : item.valor_negociado_anual;
+            : item.valor_negociado_anual
+        );
 
-        const dias = item.quantidade_dias || 1;
+        const dias = Number(item.quantidade_dias || 1);
         valorItem = valorNegociado * dias;
       }
 
@@ -83,7 +84,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
     (total, item) => total + item.valorTotal,
     0
   );
-  const total = subtotal + lease.valor_frete + lease.valor_multa;
+  const total = subtotal + Number(lease.valor_frete || 0) + Number(lease.valor_multa || 0) - Number(lease.valor_desconto || 0);
 
   // Traduzir período
   const traduzirPeriodo = (periodo?: string) => {
@@ -531,6 +532,32 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
                 }}
               >
                 {formatCurrency(lease.valor_multa)}
+              </td>
+            </tr>
+          )}
+          {lease.valor_desconto > 0 && (
+            <tr>
+              <td>&nbsp;</td>
+              <td
+                style={{
+                  border: "1px solid black",
+                  padding: "5px",
+                  fontWeight: "bold",
+                  backgroundColor: "#e8e8e8",
+                  textAlign: "right",
+                }}
+              >
+                DESCONTO:
+              </td>
+              <td
+                style={{
+                  border: "1px solid black",
+                  padding: "5px",
+                  textAlign: "right",
+                  color: "green",
+                }}
+              >
+                - {formatCurrency(lease.valor_desconto)}
               </td>
             </tr>
           )}
