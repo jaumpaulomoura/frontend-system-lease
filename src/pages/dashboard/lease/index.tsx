@@ -114,6 +114,7 @@ interface LeaseRequestPayload {
   valor_total: number;
   valor_multa: number;
   valor_frete: number;
+  valor_desconto: number;
   status: string;
   observacoes?: string | null;
   leaseItems: Array<{
@@ -147,6 +148,7 @@ export type FormData = {
   valor_total: number;
   valor_multa: number;
   valor_frete: number;
+  valor_desconto: number;
   status: string;
   observacoes?: string | null;
 };
@@ -229,6 +231,7 @@ export default function LeasePage() {
       valor_total: 0,
       valor_multa: 0,
       valor_frete: 60,
+      valor_desconto: 0,
       status: "Ativo",
       observacoes: "",
     },
@@ -607,6 +610,7 @@ export default function LeasePage() {
         ),
         valor_multa: 0,
         valor_frete: data.valor_frete,
+        valor_desconto: data.valor_desconto || 0,
         status: data.status || "Ativo",
         leaseItems: leaseItems.map((item) => {
           const patrimonioId = item.patrimonio?.id || 0;

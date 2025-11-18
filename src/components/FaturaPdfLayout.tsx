@@ -554,7 +554,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
                   border: "1px solid black",
                   padding: "5px",
                   textAlign: "right",
-                  color: "green",
+                  color: "red",
                 }}
               >
                 - {formatCurrency(lease.valor_desconto)}

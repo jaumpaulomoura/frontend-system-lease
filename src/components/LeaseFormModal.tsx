@@ -70,6 +70,7 @@ interface LeaseRequestPayload {
   valor_total: number;
   valor_multa: number;
   valor_frete: number;
+  valor_desconto: number;
   status: string;
   observacoes?: string | null;
   leaseItems: Array<{
@@ -104,6 +105,7 @@ export type FormData = {
   valor_total: number;
   valor_multa: number;
   valor_frete: number;
+  valor_desconto: number;
   status: string;
   observacoes?: string | null;
 };
@@ -213,6 +215,7 @@ export default function LeaseFormModal({
       valor_total: 0,
       valor_multa: 0,
       valor_frete: 60,
+      valor_desconto: 0,
       status: "Ativo",
       observacoes: "",
     },
@@ -371,8 +374,9 @@ export default function LeaseFormModal({
 
   useEffect(() => {
     const valorFrete = form.watch("valor_frete") || 0;
-    form.setValue("valor_total", valorTotalItens + valorFrete);
-  }, [valorTotalItens, form.watch("valor_frete")]);
+    const valorDesconto = form.watch("valor_desconto") || 0;
+    form.setValue("valor_total", valorTotalItens + valorFrete - valorDesconto);
+  }, [valorTotalItens, form.watch("valor_frete"), form.watch("valor_desconto")]);
 
   return (
     <Dialog
@@ -726,7 +730,7 @@ export default function LeaseFormModal({
               <Box
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "1fr 1fr 1fr",
                   gap: 2,
                   mt: 2,
                 }}
@@ -750,6 +754,21 @@ export default function LeaseFormModal({
                     valueAsNumber: true,
                   })}
                   label="Valor Frete"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">R$</InputAdornment>
+                    ),
+                    style: { height: 40 },
+                  }}
+                />
+
+                <TextField
+                  {...form.register("valor_desconto", {
+                    valueAsNumber: true,
+                  })}
+                  label="Valor Desconto"
                   size="small"
                   InputLabelProps={{ shrink: true }}
                   InputProps={{
