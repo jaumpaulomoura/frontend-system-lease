@@ -535,7 +535,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
               </td>
             </tr>
           )}
-          {lease.valor_desconto > 0 && (
+          {lease.valor_desconto && lease.valor_desconto > 0 && (
             <tr>
               <td>&nbsp;</td>
               <td
