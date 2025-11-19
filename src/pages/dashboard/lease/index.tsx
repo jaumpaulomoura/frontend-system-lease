@@ -887,20 +887,53 @@ export default function LeasePage() {
         const handleDownload = async () => {
           setIsGenerating(true);
           try {
-            const element = document.getElementById(
-              `fatura-print-${params.row.id_locacao}`
-            );
-            if (!element) return;
+            // Cria um container temporário com ID único
+            const uniqueId = `fatura-temp-${params.row.id_locacao}-${Date.now()}`;
+            const tempContainer = document.createElement('div');
+            tempContainer.id = uniqueId;
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.top = '-9999px';
+            tempContainer.style.width = '210mm';
+            document.body.appendChild(tempContainer);
+
+            // Renderiza o componente React no elemento temporário
+            const { createRoot } = await import('react-dom/client');
+            const root = createRoot(tempContainer);
+            root.render(<FaturaPdfLayout lease={params.row} />);
+
+            // Aguarda um pequeno delay para garantir que o componente foi renderizado
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Busca o elemento renderizado pelo seu ID específico
+            const faturaElement = document.getElementById(`fatura-print-${params.row.id_locacao}`);
+
+            if (!faturaElement) {
+              throw new Error('Elemento da fatura não encontrado');
+            }
 
             const html2pdf = (await import("html2pdf.js")).default;
             await html2pdf()
-              .from(element)
+              .from(faturaElement)
               .set({
                 filename: `fatura-${params.row.id_locacao}.pdf`,
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                html2canvas: {
+                  scale: 2,
+                  useCORS: true,
+                  logging: false
+                },
+                jsPDF: {
+                  unit: "mm",
+                  format: "a4",
+                  orientation: "portrait"
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
               })
               .save();
+
+            // Limpa o elemento temporário
+            root.unmount();
+            document.body.removeChild(tempContainer);
           } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             setSnackbar({
@@ -914,28 +947,19 @@ export default function LeasePage() {
         };
 
         return (
-          <>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleDownload}
-              disabled={isGenerating}
-              startIcon={isGenerating ? null : <PiFilePdf />}
-            >
-              {isGenerating ? (
-                <CircularProgress size={14} sx={{ mr: 1 }} />
-              ) : (
-                "Gerar"
-              )}
-            </Button>
-
-            {/* Elemento oculto para conversão */}
-            <div style={{ display: "none" }}>
-              <div id={`fatura-print-${params.row.id_locacao}`}>
-                <FaturaPdfLayout lease={params.row} />
-              </div>
-            </div>
-          </>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleDownload}
+            disabled={isGenerating}
+            startIcon={isGenerating ? null : <PiFilePdf />}
+          >
+            {isGenerating ? (
+              <CircularProgress size={14} sx={{ mr: 1 }} />
+            ) : (
+              "Gerar"
+            )}
+          </Button>
         );
       },
     },

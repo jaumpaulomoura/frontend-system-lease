@@ -35,18 +35,32 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
       const produtoMarca = item.patrimonio?.produto?.marca || "";
       const chave = `${produtoNome}_${produtoMarca}`;
 
+      // Pega o valor negociado conforme o período
+      const periodo = item.periodo_cobranca || item.periodo || "diario";
+      const valorNegociado = Number(
+        periodo === "diario"
+          ? item.valor_negociado_diario
+          : periodo === "semanal"
+          ? item.valor_negociado_semanal
+          : periodo === "quinzenal"
+          ? item.valor_negociado_quinzenal
+          : periodo === "mensal"
+          ? item.valor_negociado_mensal
+          : item.valor_negociado_anual
+      );
+
       if (!grupos[chave]) {
         grupos[chave] = {
           nome: produtoNome,
           marca: produtoMarca,
           dias: Number(item.quantidade_dias || 1),
           quantidade: 0,
-          valorUnitario: 0,
+          valorUnitario: valorNegociado, // Valor unitário é o valor negociado do período
           valorTotal: 0,
         };
       }
 
-      // Calcula o valor deste item
+      // Calcula o valor total deste item
       let valorItem: number;
 
       // Se valor_total foi editado manualmente, usa ele
@@ -54,25 +68,11 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
         valorItem = Number(item.valor_total);
       } else {
         // Senão, usa o cálculo automático (valor_negociado × dias)
-        const periodo = item.periodo_cobranca || item.periodo || "diario";
-        const valorNegociado = Number(
-          periodo === "diario"
-            ? item.valor_negociado_diario
-            : periodo === "semanal"
-            ? item.valor_negociado_semanal
-            : periodo === "quinzenal"
-            ? item.valor_negociado_quinzenal
-            : periodo === "mensal"
-            ? item.valor_negociado_mensal
-            : item.valor_negociado_anual
-        );
-
         const dias = Number(item.quantidade_dias || 1);
         valorItem = valorNegociado * dias;
       }
 
       grupos[chave].quantidade += 1;
-      grupos[chave].valorUnitario = valorItem / (grupos[chave].quantidade || 1);
       grupos[chave].valorTotal += valorItem;
     });
 
@@ -91,12 +91,12 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
       id={`fatura-print-${lease.id_locacao}`}
       style={{
         width: "210mm",
-        minHeight: "297mm",
         padding: "15mm",
         backgroundColor: "white",
         color: "black",
         fontSize: "10px",
         fontFamily: "Arial, sans-serif",
+        boxSizing: "border-box",
       }}
     >
       {/* CABEÇALHO */}
@@ -143,7 +143,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
                 <br />
                 CEP: 14.403-615 - Franca/SP - CNPJ: 51.101.682/0001-60
                 <br />
-                Tel: (16) XXXX-XXXX
+                Tel: (16) 99353-4031
               </span>
             </td>
             <td
