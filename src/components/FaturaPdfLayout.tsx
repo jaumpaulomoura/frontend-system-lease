@@ -23,7 +23,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
       [key: string]: {
         nome: string;
         marca: string;
-        periodo: string;
+        dias: number;
         quantidade: number;
         valorUnitario: number;
         valorTotal: number;
@@ -39,7 +39,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
         grupos[chave] = {
           nome: produtoNome,
           marca: produtoMarca,
-          periodo: item.periodo_cobranca || item.periodo || "diario",
+          dias: Number(item.quantidade_dias || 1),
           quantidade: 0,
           valorUnitario: 0,
           valorTotal: 0,
@@ -85,18 +85,6 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
     0
   );
   const total = subtotal + Number(lease.valor_frete || 0) + Number(lease.valor_multa || 0) - Number(lease.valor_desconto || 0);
-
-  // Traduzir período
-  const traduzirPeriodo = (periodo?: string) => {
-    const periodos: { [key: string]: string } = {
-      diario: "Diário",
-      semanal: "Semanal",
-      quinzenal: "Quinzenal",
-      mensal: "Mensal",
-      anual: "Anual",
-    };
-    return periodos[periodo || "mensal"] || "Mensal";
-  };
 
   return (
     <div
@@ -367,7 +355,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
                 width: "12%",
               }}
             >
-              PERÍODO
+              DIAS
             </th>
             <th
               style={{
@@ -427,7 +415,7 @@ const FaturaPdfLayout = ({ lease }: { lease: LeaseProps }) => {
                     textAlign: "center",
                   }}
                 >
-                  {traduzirPeriodo(item.periodo)}
+                  {item.dias}
                 </td>
                 <td
                   style={{
