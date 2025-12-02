@@ -1022,11 +1022,7 @@ export default function LeasePage() {
       field: "valor_total",
       headerName: "Valor Total",
       width: 140,
-      valueGetter: (params: any) => {
-        // Protege contra undefined
-        const valor = params.row?.valor_total;
-        return formatCurrency(Number(valor) || 0);
-      },
+      valueFormatter: (params) => formatCurrency(params),
     },
 
     {
@@ -1038,6 +1034,12 @@ export default function LeasePage() {
     {
       field: "valor_frete",
       headerName: "Valor Frete",
+      width: 120,
+      valueFormatter: (params) => formatCurrency(params),
+    },
+    {
+      field: "valor_desconto",
+      headerName: "Valor Desconto",
       width: 120,
       valueFormatter: (params) => formatCurrency(params),
     },
@@ -1670,10 +1672,15 @@ export default function LeasePage() {
         y
       );
       y += 7;
-      doc.text(`Valor Total: ${formatCurrency(lease.valor_total)}`, 14, y);
-      doc.text(`Valor Multa: ${formatCurrency(lease.valor_multa)}`, 14, y + 7);
-      doc.text(`Valor Frete: ${formatCurrency(lease.valor_frete)}`, 14, y + 7);
-      y += 14;
+      doc.text(`Valor Itens: ${formatCurrency(lease.valor_total)}`, 14, y);
+      y += 7;
+      doc.text(`Valor Frete: ${formatCurrency(lease.valor_frete)}`, 14, y);
+      y += 7;
+      doc.text(`Valor Desconto: ${formatCurrency(lease.valor_desconto || 0)}`, 14, y);
+      y += 7;
+      const valorFinal = Number(lease.valor_total || 0) + Number(lease.valor_frete || 0) - Number(lease.valor_desconto || 0);
+      doc.text(`Valor Total: ${formatCurrency(valorFinal)}`, 14, y);
+      y += 7;
 
       doc.setFontSize(12);
       doc.text("Itens Alugados:", 14, y);

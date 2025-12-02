@@ -151,11 +151,11 @@ export const FinancialPdfReport: React.FC<FinancialPdfReportProps> = ({
   // Calcular totais
   const totalPaid = leases
     .filter((lease) => lease.data_pagamento)
-    .reduce((sum, lease) => sum + Number(lease.valor_total || 0), 0);
+    .reduce((sum, lease) => sum + Number(lease.valor_total || 0) + Number(lease.valor_frete || 0) - Number(lease.valor_desconto || 0), 0);
 
   const totalUnpaid = leases
     .filter((lease) => !lease.data_pagamento && lease.data_prevista_devolucao)
-    .reduce((sum, lease) => sum + Number(lease.valor_total || 0), 0);
+    .reduce((sum, lease) => sum + Number(lease.valor_total || 0) + Number(lease.valor_frete || 0) - Number(lease.valor_desconto || 0), 0);
 
   const totalGeneral = totalPaid + totalUnpaid;
 
@@ -251,7 +251,7 @@ export const FinancialPdfReport: React.FC<FinancialPdfReportProps> = ({
                   </View>
                   <View style={styles.tableCol}>
                     <Text style={styles.tableCell}>
-                      {formatCurrency(Number(lease.valor_total || 0))}
+                      {formatCurrency(Number(lease.valor_total || 0) + Number(lease.valor_frete || 0) - Number(lease.valor_desconto || 0))}
                     </Text>
                   </View>
                   <View style={styles.tableCol}>

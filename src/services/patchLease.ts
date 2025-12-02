@@ -20,6 +20,7 @@ interface PatchLeasePayload {
   valor_total?: number;
   valor_multa?: number;
   valor_frete?: number;
+  valor_desconto?: number;
   status?: string;
   observacoes?: string | null;
   leaseItems?: Array<{

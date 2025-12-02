@@ -359,7 +359,10 @@ export default function OderanDashboard() {
     filteredLeases.forEach((lease) => {
       if (!lease) return;
 
-      const valorTotal = Number(lease.valor_total || 0);
+      // Calcula valor total: valor_total + frete - desconto
+      const valorTotal = Number(lease.valor_total || 0) +
+                        Number(lease.valor_frete || 0) -
+                        Number(lease.valor_desconto || 0);
 
       // Receita paga (com data_pagamento)
       if (lease.data_pagamento) {
@@ -945,7 +948,9 @@ export default function OderanDashboard() {
                           .filter((lease) => lease.data_pagamento)
                           .reduce(
                             (sum, lease) =>
-                              sum + Number(lease.valor_total || 0),
+                              sum + Number(lease.valor_total || 0) +
+                              Number(lease.valor_frete || 0) -
+                              Number(lease.valor_desconto || 0),
                             0
                           )
                       )}
@@ -963,7 +968,9 @@ export default function OderanDashboard() {
                           )
                           .reduce(
                             (sum, lease) =>
-                              sum + Number(lease.valor_total || 0),
+                              sum + Number(lease.valor_total || 0) +
+                              Number(lease.valor_frete || 0) -
+                              Number(lease.valor_desconto || 0),
                             0
                           )
                       )}

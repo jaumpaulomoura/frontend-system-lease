@@ -752,6 +752,7 @@ export default function LeaseFormModal({
                 <TextField
                   {...form.register("valor_frete", {
                     valueAsNumber: true,
+                    setValueAs: (v) => v === '' ? 0 : Number(v),
                   })}
                   label="Valor Frete"
                   size="small"
@@ -767,6 +768,7 @@ export default function LeaseFormModal({
                 <TextField
                   {...form.register("valor_desconto", {
                     valueAsNumber: true,
+                    setValueAs: (v) => v === '' ? 0 : Number(v),
                   })}
                   label="Valor Desconto"
                   size="small"
